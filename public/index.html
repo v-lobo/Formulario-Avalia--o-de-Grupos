@@ -10,7 +10,12 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 </head>
 <body>
-  <a href="/dashboard.html" id="secret-dashboard-btn" style="position:fixed;top:0;right:0;width:50px;height:50px;z-index:9999;opacity:0;"></a>
+  <div style="position:fixed;top:16px;right:16px;z-index:9999;display:flex;gap:12px;align-items:center;">
+    <a href="/dashboard.html" id="secret-dashboard-btn" style="text-decoration:none;font-size:0.75rem;font-weight:600;color:var(--text-dim);opacity:0.4;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">Painel</a>
+    <button id="theme-toggle" class="theme-toggle" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:50%;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:var(--transition);" title="Alternar tema">
+      <span class="theme-icon">🌙</span>
+    </button>
+  </div>
 
   <!-- Progress Bar -->
   <div class="progress-container">

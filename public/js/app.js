@@ -1,3 +1,24 @@
+// ===== THEME =====
+function initTheme() {
+  const saved = localStorage.getItem('dash_theme') || 'dark';
+  applyTheme(saved);
+  const toggle = document.getElementById('theme-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      localStorage.setItem('dash_theme', next);
+    });
+  }
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const icon = theme === 'light' ? '☀️' : '🌙';
+  const el = document.querySelector('.theme-icon');
+  if (el) el.textContent = icon;
+}
+
 // ===== STATE =====
 const state = {
   currentStep: 1,
@@ -48,6 +69,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   initSelectButtons();
   initNavigation();
   initMemberSystem();

@@ -11,6 +11,13 @@
   --shadow:0 8px 32px rgba(0,0,0,.4);
   --transition:all .3s cubic-bezier(.4,0,.2,1);
 }
+[data-theme="light"] {
+  --bg-primary:#f8fafc;--bg-secondary:#ffffff;--bg-card:#ffffff;
+  --border:rgba(0,0,0,.08);--border-focus:rgba(99,102,241,.5);
+  --text:#1e293b;--text-muted:#475569;--text-dim:#64748b;
+  --accent:#4f46e5;--accent-light:#6366f1;--accent-glow:rgba(79,70,229,.15);
+  --shadow:0 8px 32px rgba(0,0,0,.08);
+}
 html{scroll-behavior:smooth}
 body{
   font-family:'Inter',system-ui,-apple-system,sans-serif;
