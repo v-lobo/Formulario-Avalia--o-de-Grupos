@@ -1,0 +1,10 @@
+{
+  "name": "formulario-avaliacao-grupos",
+  "version": "1.0.0",
+  "description": "Formulário de Avaliação de Desempenho de Alunos",
+  "main": "server.js",
+  "scripts": {},
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.3"
+  }
+}

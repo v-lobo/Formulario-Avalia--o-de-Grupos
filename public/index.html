@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avaliação de Desempenho — Projeto Escolar</title>
+  <meta name="description" content="Formulário de avaliação de desempenho de alunos em projetos escolares">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+</head>
+<body>
+
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-steps">
+      <div class="step active" data-step="1">
+        <div class="step-icon">1</div><span>Identificação</span>
+      </div>
+      <div class="step-line" id="line-1-2"></div>
+      <div class="step" data-step="2">
+        <div class="step-icon">2</div><span>Avaliação</span>
+      </div>
+      <div class="step-line" id="line-2-3"></div>
+      <div class="step" data-step="3">
+        <div class="step-icon">3</div><span>Equipe</span>
+      </div>
+      <div class="step-line" id="line-3-4"></div>
+      <div class="step" data-step="4">
+        <div class="step-icon">4</div><span>Líder</span>
+      </div>
+      <div class="step-line" id="line-4-5"></div>
+      <div class="step" data-step="5">
+        <div class="step-icon">✓</div><span>Fim</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ========== STEP 1: Leader Info ========== -->
+    <div class="form-step active" id="step-1">
+      <div class="card">
+        <div class="card-header">
+          <span class="emoji">📋</span>
+          <h1>Formulário de Avaliação</h1>
+          <p class="subtitle">Preencha as informações do seu grupo para começar</p>
+        </div>
+        <div class="form-group">
+          <label for="leader-name">Nome do Líder</label>
+          <input type="text" id="leader-name" placeholder="Digite seu nome completo" autocomplete="name">
+          <span class="error-msg">Por favor, digite seu nome.</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unidade</label>
+            <div class="select-group" id="unit-group">
+              <button type="button" class="select-btn" data-value="Farol" data-group="unit">🏫 Farol</button>
+              <button type="button" class="select-btn" data-value="Jatiúca" data-group="unit">🏫 Jatiúca</button>
+            </div>
+            <span class="error-msg">Selecione a unidade.</span>
+          </div>
+          <div class="form-group">
+            <label>Série</label>
+            <div class="select-group" id="grade-group">
+              <button type="button" class="select-btn" data-value="6" data-group="grade">6º Ano</button>
+              <button type="button" class="select-btn" data-value="7" data-group="grade">7º Ano</button>
+            </div>
+            <span class="error-msg">Selecione a série.</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="class-select">Turma</label>
+            <select id="class-select" disabled>
+              <option value="">Selecione unidade e série</option>
+            </select>
+            <span class="error-msg">Selecione a turma.</span>
+          </div>
+          <div class="form-group">
+            <label for="group-select">Grupo</label>
+            <select id="group-select">
+              <option value="">Selecione</option>
+              <option value="1">Grupo 1</option>
+              <option value="2">Grupo 2</option>
+              <option value="3">Grupo 3</option>
+              <option value="4">Grupo 4</option>
+              <option value="5">Grupo 5</option>
+              <option value="6">Grupo 6</option>
+            </select>
+            <span class="error-msg">Selecione o grupo.</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-next-1">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- ========== STEP 2: Member Evaluations ========== -->
+    <div class="form-step" id="step-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="emoji">⭐</span>
+          <h1>Avaliação dos Integrantes</h1>
+          <p class="subtitle">Avalie cada colega do seu grupo clicando nas estrelas</p>
+        </div>
+        <div id="members-container"></div>
+        <button type="button" class="btn-add" id="btn-add-member">
+          ＋ Adicionar Integrante
+        </button>
+        <div style="margin-top:20px">
+          <button type="button" class="btn btn-primary" id="btn-next-2">Finalizar Avaliação →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== STEP 3: Transition ========== -->
+    <div class="form-step" id="step-3">
+      <div class="card">
+        <div class="transition-screen">
+          <span class="emoji">🤝</span>
+          <h1>Agora é a vez da sua equipe!</h1>
+          <p>Passe o formulário para seus colegas responderem! Eles vão avaliar o desempenho do líder em conjunto.</p>
+          <button type="button" class="btn btn-primary" id="btn-next-3" style="max-width:320px;margin:0 auto">Continuar → Avaliação do Líder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== STEP 4: Leader Evaluation ========== -->
+    <div class="form-step" id="step-4">
+      <div class="card">
+        <div class="card-header">
+          <span class="emoji">👑</span>
+          <h1>Avaliação do Líder</h1>
+          <p class="subtitle">Avaliação feita pela equipe em conjunto</p>
+        </div>
+        <div class="leader-eval-header">
+          <span style="font-size:1.5rem">👤</span>
+          <div class="leader-name" id="leader-name-display"></div>
+          <p style="font-size:.8rem;margin-top:4px">Líder do grupo</p>
+        </div>
+        <div id="leader-eval-form"></div>
+        <button type="button" class="btn btn-success" id="btn-submit">Enviar Avaliação ✓</button>
+      </div>
+    </div>
+
+    <!-- ========== STEP 5: Complete ========== -->
+    <div class="form-step" id="step-5">
+      <div class="card">
+        <div class="completion-screen">
+          <div class="checkmark-circle">✓</div>
+          <h1>Avaliação Concluída!</h1>
+          <p style="margin-bottom:24px">Obrigado! Todas as avaliações foram salvas com sucesso.</p>
+          <button type="button" class="btn btn-primary" onclick="location.reload()" style="max-width:280px;margin:0 auto">Nova Avaliação</button>
+          <div style="margin-top:16px">
+            <a href="/dashboard.html" style="color:var(--text-dim);font-size:.8rem">Área do Professor →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Loading -->
+  <div class="loading-overlay hidden" id="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

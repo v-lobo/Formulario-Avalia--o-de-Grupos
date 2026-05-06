@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard do Professor — Avaliação de Grupos</title>
+  <meta name="description" content="Painel de análise das avaliações de desempenho dos alunos">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body class="dash-body">
+
+  <!-- Auth Gate -->
+  <div id="auth-gate" class="auth-gate">
+    <div class="auth-card">
+      <span style="font-size:3rem;display:block;margin-bottom:12px">🔐</span>
+      <h2>Área do Professor</h2>
+      <p>Digite a senha para acessar o painel de análises.</p>
+      <div class="form-group">
+        <label for="auth-pass">Senha</label>
+        <input type="password" id="auth-pass" placeholder="Digite a senha">
+      </div>
+      <button class="btn btn-primary" id="auth-btn">Entrar</button>
+      <p style="margin-top:16px;font-size:.75rem;color:var(--text-dim)">Senha padrão: professor</p>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none">
+    <div class="dash-header">
+      <h1>📊 Painel de Avaliações</h1>
+      <a href="/" class="back-link">← Formulário</a>
+    </div>
+
+    <div class="dash-container">
+      <!-- Filters -->
+      <div class="filters-bar">
+        <span class="filter-label">Filtros:</span>
+        <select id="f-unit"><option value="">Todas Unidades</option><option value="Farol">Farol</option><option value="Jatiúca">Jatiúca</option></select>
+        <select id="f-grade"><option value="">Todas Séries</option><option value="6">6º Ano</option><option value="7">7º Ano</option></select>
+        <select id="f-class"><option value="">Todas Turmas</option></select>
+        <select id="f-group"><option value="">Todos Grupos</option><option value="1">Grupo 1</option><option value="2">Grupo 2</option><option value="3">Grupo 3</option><option value="4">Grupo 4</option><option value="5">Grupo 5</option><option value="6">Grupo 6</option></select>
+        <button class="btn btn-secondary btn-sm" id="btn-clear-filters">Limpar</button>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid" id="stats-cards"></div>
+
+      <!-- Tabs -->
+      <div class="dash-tabs">
+        <button class="dash-tab active" data-tab="overview">📈 Visão Geral</button>
+        <button class="dash-tab" data-tab="groups">👥 Por Grupo</button>
+        <button class="dash-tab" data-tab="leaders">👑 Líderes</button>
+        <button class="dash-tab" data-tab="details">📋 Detalhes</button>
+      </div>
+
+      <!-- Tab: Overview -->
+      <div class="tab-content active" id="tab-overview">
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>🕸️ Média por Critério (Integrantes)</h3>
+            <canvas id="chart-radar-members"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>🕸️ Média por Critério (Líderes)</h3>
+            <canvas id="chart-radar-leaders"></canvas>
+          </div>
+          <div class="chart-card full-width">
+            <h3>📊 Comparação entre Turmas</h3>
+            <canvas id="chart-class-comparison"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Groups -->
+      <div class="tab-content" id="tab-groups">
+        <div class="charts-grid">
+          <div class="chart-card full-width">
+            <h3>🏆 Ranking dos Grupos (Média Geral)</h3>
+            <canvas id="chart-group-ranking"></canvas>
+          </div>
+          <div class="chart-card full-width">
+            <h3>📊 Critérios por Grupo</h3>
+            <canvas id="chart-group-criteria"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Leaders -->
+      <div class="tab-content" id="tab-leaders">
+        <div class="charts-grid">
+          <div class="chart-card full-width">
+            <h3>👑 Desempenho dos Líderes</h3>
+            <canvas id="chart-leader-ranking"></canvas>
+          </div>
+          <div class="chart-card full-width">
+            <h3>🔄 Líderes vs Integrantes (Média Geral)</h3>
+            <canvas id="chart-leader-vs-member"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Details -->
+      <div class="tab-content" id="tab-details">
+        <div class="chart-card">
+          <h3>📋 Avaliações Detalhadas</h3>
+          <div style="overflow-x:auto" id="details-table-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
