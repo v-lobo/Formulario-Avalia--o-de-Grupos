@@ -1,5 +1,5 @@
 // ===== AUTH =====
-const AUTH_PASS = 'professor';
+const AUTH_PASS = 'tato123';
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
