@@ -26,33 +26,46 @@ function showDashboard() {
   initDashboard();
 }
 
-// ===== CHART.JS DEFAULTS =====
-Chart.defaults.color = '#94a3b8';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
-Chart.defaults.font.family = 'Inter, sans-serif';
-
-const COLORS = ['#6366f1','#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6'];
-const COLORS_BG = COLORS.map(c => c + '33');
-
-// ===== DASHBOARD =====
-let charts = {};
-
-async function initDashboard() {
-  initTabs();
-  initFilters();
-  await loadData();
+// ===== THEME =====
+function initTheme() {
+  const saved = localStorage.getItem('dash_theme') || 'dark';
+  applyTheme(saved);
+  $('#theme-toggle').addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+    localStorage.setItem('dash_theme', next);
+  });
 }
 
-// ===== TABS =====
-function initTabs() {
-  $$('.dash-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      $$('.dash-tab').forEach(t => t.classList.remove('active'));
-      $$('.tab-content').forEach(c => c.classList.remove('active'));
-      tab.classList.add('active');
-      $(`#tab-${tab.dataset.tab}`).classList.add('active');
-    });
-  });
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const icon = theme === 'light' ? '☀️' : '🌙';
+  $('.theme-icon').textContent = icon;
+  // Update Chart.js defaults
+  Chart.defaults.color = theme === 'light' ? '#475569' : '#94a3b8';
+  Chart.defaults.borderColor = theme === 'light' ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.06)';
+  // Re-render charts if data is loaded
+  if (cachedStats) renderCharts(cachedStats);
+}
+
+// ===== CHART.JS DEFAULTS =====
+Chart.defaults.font.family = 'Inter, sans-serif';
+Chart.defaults.font.size = 12;
+
+const MEMBER_COLOR = '#6366f1';
+const LEADER_COLOR = '#f59e0b';
+const CRITERIA_COLORS = ['#6366f1','#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#3b82f6','#f97316'];
+
+// ===== STATE =====
+let charts = {};
+let cachedStats = null;
+let cachedEvals = null;
+
+// ===== INIT =====
+async function initDashboard() {
+  initTheme();
+  initFilters();
+  await loadData();
 }
 
 // ===== FILTERS =====
@@ -71,13 +84,14 @@ function initFilters() {
     updateClassFilter();
     loadData();
   });
+  $('#btn-export-csv').addEventListener('click', exportCSV);
 }
 
 function updateClassFilter() {
   const unit = $('#f-unit').value;
   const grade = $('#f-grade').value;
   const sel = $('#f-class');
-  sel.innerHTML = '<option value="">Todas Turmas</option>';
+  sel.innerHTML = '<option value="">Todas</option>';
   if (unit && grade) {
     const classes = CLASS_MAP[`${unit}-${grade}`] || [];
     classes.forEach(c => { sel.innerHTML += `<option value="${c}">Turma ${c}</option>`; });
@@ -105,6 +119,8 @@ async function loadData() {
     ]);
     const stats = await statsRes.json();
     const evals = await evalsRes.json();
+    cachedStats = stats;
+    cachedEvals = evals;
     renderAll(stats, evals);
   } catch (e) {
     console.error('Error loading data:', e);
@@ -114,249 +130,233 @@ async function loadData() {
 // ===== RENDER =====
 function renderAll(stats, evals) {
   renderStatsCards(stats);
-  renderRadarMembers(stats);
-  renderRadarLeaders(stats);
-  renderClassComparison(stats);
-  renderGroupRanking(stats);
-  renderGroupCriteria(stats);
-  renderLeaderRanking(stats);
-  renderLeaderVsMember(stats);
-  renderDetailsTable(evals);
+  renderCharts(stats);
+  renderSummaryTable(stats);
 }
 
 // ===== STATS CARDS =====
 function renderStatsCards(stats) {
   const ms = stats.memberStats || {};
   const ls = stats.leaderStats || {};
-  const avgAll = ((ms.avg_resp||0)+(ms.avg_rel||0)+(ms.avg_coop||0)+(ms.avg_org||0)+(ms.avg_edu||0)) / 5;
+  const combinedAvg = stats.combinedAvg || 0;
+  const totalLow = stats.totalLowScores || 0;
 
   const cards = [
-    { icon:'📊', value: ms.total_evals || 0, label:'Avaliações' },
-    { icon:'👥', value: ms.total_members || 0, label:'Alunos Avaliados' },
-    { icon:'👑', value: ls.total_leader_evals || 0, label:'Líderes Avaliados' },
-    { icon:'⭐', value: avgAll ? avgAll.toFixed(1) : '—', label:'Média Geral' },
+    { icon: '📋', color: 'purple', value: ms.total_evals || 0, label: 'Formulários' },
+    { icon: '👥', color: 'green', value: ms.total_members || 0, label: 'Integrantes avaliados' },
+    { icon: '⭐', color: 'amber', value: combinedAvg ? combinedAvg.toFixed(1) : '—', label: 'Média geral' },
+    { icon: '⚠️', color: 'red', value: totalLow, label: 'Notas 1 ou 2' },
   ];
 
   $('#stats-cards').innerHTML = cards.map(c => `
     <div class="stat-card">
-      <div class="stat-icon">${c.icon}</div>
-      <div class="stat-value">${c.value}</div>
-      <div class="stat-label">${c.label}</div>
+      <div class="stat-icon-wrap ${c.color}">${c.icon}</div>
+      <div class="stat-info">
+        <div class="stat-value">${c.value}</div>
+        <div class="stat-label">${c.label}</div>
+      </div>
     </div>
   `).join('');
 }
 
-// ===== RADAR: MEMBERS =====
-function renderRadarMembers(stats) {
+// ===== CHARTS =====
+function renderCharts(stats) {
+  renderCriteriaChart(stats);
+  renderTeamsChart(stats);
+}
+
+// --- Média por Critério ---
+function renderCriteriaChart(stats) {
   const ms = stats.memberStats || {};
-  destroyChart('radarMembers');
-  if (!ms.total_members) { noData('chart-radar-members'); return; }
-  clearNoData('chart-radar-members');
-  charts.radarMembers = new Chart($('#chart-radar-members'), {
-    type: 'radar',
-    data: {
-      labels: ['Responsabilidade','Relacionamento','Cooperação','Organização','Educação'],
-      datasets: [{
-        label: 'Média',
-        data: [ms.avg_resp, ms.avg_rel, ms.avg_coop, ms.avg_org, ms.avg_edu],
-        backgroundColor: COLORS_BG[0], borderColor: COLORS[0], borderWidth: 2, pointRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true, scales: { r: { min: 0, max: 5, ticks: { stepSize: 1 } } },
-      plugins: { legend: { display: false } },
-    }
-  });
-}
-
-// ===== RADAR: LEADERS =====
-function renderRadarLeaders(stats) {
   const ls = stats.leaderStats || {};
-  destroyChart('radarLeaders');
-  if (!ls.total_leader_evals) { noData('chart-radar-leaders'); return; }
-  clearNoData('chart-radar-leaders');
-  charts.radarLeaders = new Chart($('#chart-radar-leaders'), {
-    type: 'radar',
+  destroyChart('criteria');
+
+  const hasMembers = ms.total_members > 0;
+  const hasLeaders = ls.total_leader_evals > 0;
+  if (!hasMembers && !hasLeaders) { noData('chart-criteria'); return; }
+  clearNoData('chart-criteria');
+
+  // All criteria labels in one chart
+  const labels = [];
+  const memberData = [];
+  const leaderData = [];
+
+  // Member criteria
+  const memberCriteria = [
+    { label: 'Responsabilidade', val: ms.avg_resp },
+    { label: 'Relacionamento', val: ms.avg_rel },
+    { label: 'Cooperação', val: ms.avg_coop },
+    { label: 'Organização', val: ms.avg_org },
+    { label: 'Educação', val: ms.avg_edu },
+  ];
+
+  // Leader criteria
+  const leaderCriteria = [
+    { label: 'Responsabilidade (líder)', val: ls.avg_resp },
+    { label: 'Espírito de Equipe', val: ls.avg_esp },
+    { label: 'Orientação Prof.', val: ls.avg_ori },
+    { label: 'Iniciativa', val: ls.avg_ini },
+    { label: 'Educação (líder)', val: ls.avg_edu },
+  ];
+
+  // Combine into a grouped bar chart: member criteria + leader criteria side by side
+  const allCriteria = [
+    ...memberCriteria.map(c => ({ ...c, group: 'Integrantes' })),
+    ...leaderCriteria.map(c => ({ ...c, group: 'Líder' }))
+  ];
+
+  allCriteria.forEach(c => labels.push(c.label));
+  const memberVals = memberCriteria.map(c => r(c.val));
+  const leaderVals = leaderCriteria.map(c => r(c.val));
+
+  // Use a single horizontal bar chart
+  const allLabels = [...memberCriteria.map(c => c.label), ...leaderCriteria.map(c => c.label)];
+  const allValues = [...memberVals, ...leaderVals];
+  const allColors = [
+    ...memberCriteria.map(() => MEMBER_COLOR),
+    ...leaderCriteria.map(() => LEADER_COLOR)
+  ];
+  const allBgColors = allColors.map(c => c + '22');
+
+  const theme = document.documentElement.dataset.theme;
+
+  charts.criteria = new Chart($('#chart-criteria'), {
+    type: 'bar',
     data: {
-      labels: ['Responsabilidade','Espírito de Equipe','Orientação Prof.','Iniciativa','Educação'],
+      labels: allLabels,
       datasets: [{
-        label: 'Média',
-        data: [ls.avg_resp, ls.avg_esp, ls.avg_ori, ls.avg_ini, ls.avg_edu],
-        backgroundColor: COLORS_BG[3], borderColor: COLORS[3], borderWidth: 2, pointRadius: 4,
+        data: allValues,
+        backgroundColor: allColors.map(c => c + '30'),
+        borderColor: allColors,
+        borderWidth: 1.5,
+        borderRadius: 6,
+        barPercentage: 0.7,
       }]
     },
     options: {
-      responsive: true, scales: { r: { min: 0, max: 5, ticks: { stepSize: 1 } } },
-      plugins: { legend: { display: false } },
-    }
-  });
-}
-
-// ===== CLASS COMPARISON =====
-function renderClassComparison(stats) {
-  const cs = stats.classStats || [];
-  destroyChart('classComp');
-  if (!cs.length) { noData('chart-class-comparison'); return; }
-  clearNoData('chart-class-comparison');
-
-  charts.classComp = new Chart($('#chart-class-comparison'), {
-    type: 'bar',
-    data: {
-      labels: cs.map(c => `${c.unit} ${c.grade}º ${c.class}`),
-      datasets: [
-        { label:'Responsabilidade', data: cs.map(c=>r(c.avg_resp)), backgroundColor: COLORS[0] },
-        { label:'Relacionamento', data: cs.map(c=>r(c.avg_rel)), backgroundColor: COLORS[1] },
-        { label:'Cooperação', data: cs.map(c=>r(c.avg_coop)), backgroundColor: COLORS[2] },
-        { label:'Organização', data: cs.map(c=>r(c.avg_org)), backgroundColor: COLORS[3] },
-        { label:'Educação', data: cs.map(c=>r(c.avg_edu)), backgroundColor: COLORS[4] },
-      ]
-    },
-    options: {
+      indexAxis: 'y',
       responsive: true,
-      scales: { y: { beginAtZero: true, max: 5 } },
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
+      maintainAspectRatio: false,
+      layout: { padding: { right: 10 } },
+      scales: {
+        x: {
+          beginAtZero: true, max: 5,
+          grid: { color: 'var(--dash-chart-grid)' },
+          ticks: { stepSize: 1 }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 11, weight: '500' } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.raw.toFixed(1)} / 5.0`
+          }
+        }
+      }
     }
   });
 }
 
-// ===== GROUP RANKING =====
-function renderGroupRanking(stats) {
+// --- Equipes em Comparação ---
+function renderTeamsChart(stats) {
   const gs = stats.groupStats || [];
-  destroyChart('groupRank');
-  if (!gs.length) { noData('chart-group-ranking'); return; }
-  clearNoData('chart-group-ranking');
+  destroyChart('teams');
+  if (!gs.length) { noData('chart-teams'); return; }
+  clearNoData('chart-teams');
 
-  const sorted = [...gs].sort((a,b) => b.avg_overall - a.avg_overall);
-  charts.groupRank = new Chart($('#chart-group-ranking'), {
-    type: 'bar',
-    data: {
-      labels: sorted.map(g => `${g.unit} ${g.grade}º${g.class} G${g.group_number}`),
-      datasets: [{
-        label: 'Média Geral',
-        data: sorted.map(g => r(g.avg_overall)),
-        backgroundColor: sorted.map((_,i) => COLORS[i % COLORS.length] + '99'),
-        borderColor: sorted.map((_,i) => COLORS[i % COLORS.length]),
-        borderWidth: 1, borderRadius: 6,
-      }]
-    },
-    options: {
-      indexAxis: 'y', responsive: true,
-      scales: { x: { beginAtZero: true, max: 5 } },
-      plugins: { legend: { display: false } },
-    }
-  });
-}
+  const labels = gs.map(g => `G${g.group_number} · ${g.unit} ${g.grade}º${g.class}`);
+  const memberAvgs = gs.map(g => r(g.member_avg));
+  const leaderAvgs = gs.map(g => g.leader_avg !== null ? r(g.leader_avg) : null);
 
-// ===== GROUP CRITERIA =====
-function renderGroupCriteria(stats) {
-  const gs = stats.groupStats || [];
-  destroyChart('groupCrit');
-  if (!gs.length) { noData('chart-group-criteria'); return; }
-  clearNoData('chart-group-criteria');
-
-  charts.groupCrit = new Chart($('#chart-group-criteria'), {
-    type: 'bar',
-    data: {
-      labels: gs.map(g => `G${g.group_number} (${g.unit} ${g.grade}º${g.class})`),
-      datasets: [
-        { label:'Responsabilidade', data: gs.map(g=>r(g.avg_resp)), backgroundColor: COLORS[0] },
-        { label:'Relacionamento', data: gs.map(g=>r(g.avg_rel)), backgroundColor: COLORS[1] },
-        { label:'Cooperação', data: gs.map(g=>r(g.avg_coop)), backgroundColor: COLORS[2] },
-        { label:'Organização', data: gs.map(g=>r(g.avg_org)), backgroundColor: COLORS[3] },
-        { label:'Educação', data: gs.map(g=>r(g.avg_edu)), backgroundColor: COLORS[4] },
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true, max: 5 } },
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
-    }
-  });
-}
-
-// ===== LEADER RANKING =====
-function renderLeaderRanking(stats) {
-  const lg = stats.leaderGroupStats || [];
-  destroyChart('leaderRank');
-  if (!lg.length) { noData('chart-leader-ranking'); return; }
-  clearNoData('chart-leader-ranking');
-
-  const sorted = [...lg].sort((a,b) => b.avg_overall - a.avg_overall);
-  charts.leaderRank = new Chart($('#chart-leader-ranking'), {
-    type: 'bar',
-    data: {
-      labels: sorted.map(g => `${g.unit} ${g.grade}º${g.class} G${g.group_number}`),
-      datasets: [{
-        label: 'Média do Líder',
-        data: sorted.map(g => r(g.avg_overall)),
-        backgroundColor: sorted.map((_,i) => COLORS[(i+3) % COLORS.length] + '99'),
-        borderColor: sorted.map((_,i) => COLORS[(i+3) % COLORS.length]),
-        borderWidth: 1, borderRadius: 6,
-      }]
-    },
-    options: {
-      indexAxis: 'y', responsive: true,
-      scales: { x: { beginAtZero: true, max: 5 } },
-      plugins: { legend: { display: false } },
-    }
-  });
-}
-
-// ===== LEADER VS MEMBER =====
-function renderLeaderVsMember(stats) {
-  const gs = stats.groupStats || [];
-  const lg = stats.leaderGroupStats || [];
-  destroyChart('lvmChart');
-  if (!gs.length && !lg.length) { noData('chart-leader-vs-member'); return; }
-  clearNoData('chart-leader-vs-member');
-
-  // Match groups
-  const labels = []; const memberData = []; const leaderData = [];
-  gs.forEach(g => {
-    const key = `${g.unit}-${g.grade}-${g.class}-${g.group_number}`;
-    const leader = lg.find(l => `${l.unit}-${l.grade}-${l.class}-${l.group_number}` === key);
-    labels.push(`G${g.group_number} (${g.unit} ${g.grade}º${g.class})`);
-    memberData.push(r(g.avg_overall));
-    leaderData.push(leader ? r(leader.avg_overall) : 0);
-  });
-
-  charts.lvmChart = new Chart($('#chart-leader-vs-member'), {
+  charts.teams = new Chart($('#chart-teams'), {
     type: 'bar',
     data: {
       labels,
       datasets: [
-        { label: 'Integrantes', data: memberData, backgroundColor: COLORS[0]+'99', borderColor: COLORS[0], borderWidth: 1, borderRadius: 6 },
-        { label: 'Líder', data: leaderData, backgroundColor: COLORS[3]+'99', borderColor: COLORS[3], borderWidth: 1, borderRadius: 6 },
+        {
+          label: 'Média Colegas',
+          data: memberAvgs,
+          backgroundColor: MEMBER_COLOR + '40',
+          borderColor: MEMBER_COLOR,
+          borderWidth: 1.5,
+          borderRadius: 6,
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+        },
+        {
+          label: 'Média Líder',
+          data: leaderAvgs,
+          backgroundColor: LEADER_COLOR + '40',
+          borderColor: LEADER_COLOR,
+          borderWidth: 1.5,
+          borderRadius: 6,
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+        }
       ]
     },
     options: {
       responsive: true,
-      scales: { y: { beginAtZero: true, max: 5 } },
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } } },
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, max: 5, grid: { color: 'var(--dash-chart-grid)' }, ticks: { stepSize: 1 } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, padding: 16, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw.toFixed(1) : '—'} / 5.0` } }
+      }
     }
   });
 }
 
-// ===== DETAILS TABLE =====
-async function renderDetailsTable(evals) {
-  const container = $('#details-table-container');
-  if (!evals.length) {
+// ===== SUMMARY TABLE =====
+function renderSummaryTable(stats) {
+  const gs = stats.groupStats || [];
+  const container = $('#summary-table-container');
+
+  if (!gs.length) {
     container.innerHTML = '<div class="empty-state"><span class="emoji">📭</span><p>Nenhuma avaliação encontrada.</p></div>';
     return;
   }
 
-  let html = `<table class="detail-table">
+  let html = `<table class="summary-table">
     <thead><tr>
-      <th>Data</th><th>Líder</th><th>Unidade</th><th>Série</th><th>Turma</th><th>Grupo</th><th>Integrantes</th><th>Ações</th>
+      <th>Unidade</th><th>Série</th><th>Turma</th><th>Grupo</th>
+      <th>Líder</th><th>Integrantes</th>
+      <th>Média Colegas</th><th>Média Líder</th><th>Atenção</th><th></th>
     </tr></thead><tbody>`;
 
-  evals.forEach(ev => {
-    const date = new Date(ev.created_at).toLocaleDateString('pt-BR');
+  gs.forEach(g => {
+    const memberBadge = avgBadge(g.member_avg);
+    const leaderBadge = g.leader_avg !== null ? avgBadge(g.leader_avg) : '<span style="color:var(--dash-text-dim)">—</span>';
+
+    let attentionHTML = '';
+    if (g.low_details && g.low_details.length > 0) {
+      attentionHTML = '<div class="attention-tags">';
+      g.low_details.forEach(d => {
+        d.fields.forEach(f => {
+          attentionHTML += `<span class="attention-tag" title="${d.name}">⚠ ${d.name.split(' ')[0]}: ${f}</span>`;
+        });
+      });
+      attentionHTML += '</div>';
+    } else {
+      attentionHTML = '<span class="attention-tag ok">✓ OK</span>';
+    }
+
     html += `<tr>
-      <td>${date}</td><td><strong>${ev.leader_name}</strong></td>
-      <td>${ev.unit}</td><td>${ev.grade}º</td><td>${ev.class}</td>
-      <td>Grupo ${ev.group_number}</td><td>${ev.member_count}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick="viewDetail(${ev.id})">Ver</button></td>
+      <td>${g.unit}</td><td>${g.grade}º</td><td>${g.class}</td>
+      <td>Grupo ${g.group_number}</td>
+      <td class="leader-name">${g.leader_name || '—'}</td>
+      <td>${g.member_count}</td>
+      <td>${memberBadge}</td>
+      <td>${leaderBadge}</td>
+      <td>${attentionHTML}</td>
+      <td><button class="btn-view" onclick="viewDetail(${g.group_number}, '${g.unit}', '${g.grade}', '${g.class}')">Ver</button></td>
     </tr>`;
   });
 
@@ -364,28 +364,42 @@ async function renderDetailsTable(evals) {
   container.innerHTML = html;
 }
 
-// ===== VIEW DETAIL =====
-window.viewDetail = async function(id) {
+function avgBadge(val) {
+  const cls = val >= 4 ? 'high' : val >= 3 ? 'mid' : 'low';
+  return `<span class="avg-badge ${cls}">${val.toFixed(1)}</span>`;
+}
+
+// ===== VIEW DETAIL MODAL =====
+window.viewDetail = async function(groupNum, unit, grade, cls) {
+  // Find the evaluation(s) for this group
+  const filters = { unit, grade, class: cls, group_number: groupNum };
+  const qs = new URLSearchParams(filters).toString();
+
   try {
-    const res = await fetch(`/api/evaluation?id=${id}`);
-    const data = await res.json();
+    const res = await fetch(`/api/evaluations?${qs}`);
+    const evals = await res.json();
+    if (!evals.length) return;
+
+    // Get detailed data for first evaluation
+    const detailRes = await fetch(`/api/evaluation?id=${evals[0].id}`);
+    const data = await detailRes.json();
     showDetailModal(data);
   } catch (e) { console.error(e); }
 };
 
 function showDetailModal(data) {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,14,26,.9);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
+  overlay.className = 'modal-overlay';
 
-  let membersHTML = (data.members || []).map(m => `
-    <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,.03);border-radius:10px">
-      <strong style="color:var(--accent-light)">👤 ${m.member_name}</strong>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:.82rem">
-        <span>📌 Responsabilidade: ${scoreLabel(m.responsabilidade)}</span>
-        <span>🤝 Relacionamento: ${scoreLabel(m.relacionamento)}</span>
-        <span>💪 Cooperação: ${scoreLabel(m.cooperacao)}</span>
-        <span>📂 Organização: ${scoreLabel(m.organizacao)}</span>
-        <span>🎓 Educação: ${scoreLabel(m.educacao)}</span>
+  const membersHTML = (data.members || []).map(m => `
+    <div class="modal-member">
+      <div class="modal-member-name">👤 ${m.member_name}</div>
+      <div class="modal-scores">
+        <span>📌 Responsabilidade: ${scoreInline(m.responsabilidade)}</span>
+        <span>🤝 Relacionamento: ${scoreInline(m.relacionamento)}</span>
+        <span>💪 Cooperação: ${scoreInline(m.cooperacao)}</span>
+        <span>📂 Organização: ${scoreInline(m.organizacao)}</span>
+        <span>🎓 Educação: ${scoreInline(m.educacao)}</span>
       </div>
       ${obsSection(m)}
     </div>
@@ -395,37 +409,40 @@ function showDetailModal(data) {
   if (data.leaderEval) {
     const le = data.leaderEval;
     leaderHTML = `
-      <h3 style="margin:16px 0 8px;color:var(--gold-light)">👑 Avaliação do Líder: ${data.leader_name}</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.82rem">
-        <span>📌 Responsabilidade: ${scoreLabel(le.responsabilidade)}</span>
-        <span>🌟 Espírito Equipe: ${scoreLabel(le.espirito_equipe)}</span>
-        <span>📖 Orientação Prof.: ${scoreLabel(le.orientacao_professor)}</span>
-        <span>🚀 Iniciativa: ${scoreLabel(le.iniciativa)}</span>
-        <span>🎓 Educação: ${scoreLabel(le.educacao)}</span>
+      <div class="modal-section-title leader">👑 Avaliação do Líder: ${data.leader_name}</div>
+      <div class="modal-member">
+        <div class="modal-scores">
+          <span>📌 Responsabilidade: ${scoreInline(le.responsabilidade)}</span>
+          <span>🌟 Espírito Equipe: ${scoreInline(le.espirito_equipe)}</span>
+          <span>📖 Orientação Prof.: ${scoreInline(le.orientacao_professor)}</span>
+          <span>🚀 Iniciativa: ${scoreInline(le.iniciativa)}</span>
+          <span>🎓 Educação: ${scoreInline(le.educacao)}</span>
+        </div>
+        ${leaderObsSection(le)}
       </div>
-      ${leaderObsSection(le)}
     `;
   }
 
   overlay.innerHTML = `
-    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);max-width:600px;width:100%;max-height:80vh;overflow-y:auto;padding:28px 24px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div class="modal-content">
+      <div class="modal-top">
         <h2>📋 ${data.leader_name} — ${data.unit} ${data.grade}º ${data.class} Grupo ${data.group_number}</h2>
-        <button class="modal-close-btn" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer">✕</button>
+        <button class="modal-close">✕</button>
       </div>
-      <h3 style="margin-bottom:8px;color:var(--accent-light)">👥 Integrantes Avaliados</h3>
-      ${membersHTML}
+      <div class="modal-section-title member">👥 Integrantes Avaliados</div>
+      ${membersHTML || '<p style="color:var(--dash-text-dim);padding:12px">Nenhum integrante avaliado.</p>'}
       ${leaderHTML}
     </div>
   `;
+
   document.body.appendChild(overlay);
-  overlay.querySelector('.modal-close-btn').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
 
-function scoreLabel(v) {
+function scoreInline(v) {
   const cls = v >= 4 ? 'high' : v >= 3 ? 'mid' : 'low';
-  return `<span class="score ${cls}">${'★'.repeat(v)}${'☆'.repeat(5-v)} (${v})</span>`;
+  return `<span class="score-inline ${cls}">${v}/5</span>`;
 }
 
 function obsSection(m) {
@@ -433,8 +450,8 @@ function obsSection(m) {
     ['responsabilidade_obs','Responsabilidade'], ['relacionamento_obs','Relacionamento'],
     ['cooperacao_obs','Cooperação'], ['organizacao_obs','Organização'], ['educacao_obs','Educação']
   ];
-  const obs = fields.filter(([k]) => m[k]).map(([k,l]) => `<div style="font-size:.78rem;color:var(--text-dim)"><strong>${l}:</strong> ${m[k]}</div>`);
-  return obs.length ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">${obs.join('')}</div>` : '';
+  const obs = fields.filter(([k]) => m[k]).map(([k,l]) => `<div><strong>${l}:</strong> ${m[k]}</div>`);
+  return obs.length ? `<div class="modal-obs">${obs.join('')}</div>` : '';
 }
 
 function leaderObsSection(le) {
@@ -442,22 +459,99 @@ function leaderObsSection(le) {
     ['responsabilidade_obs','Responsabilidade'], ['espirito_equipe_obs','Espírito Equipe'],
     ['orientacao_professor_obs','Orientação Prof.'], ['iniciativa_obs','Iniciativa'], ['educacao_obs','Educação']
   ];
-  const obs = fields.filter(([k]) => le[k]).map(([k,l]) => `<div style="font-size:.78rem;color:var(--text-dim)"><strong>${l}:</strong> ${le[k]}</div>`);
-  return obs.length ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">${obs.join('')}</div>` : '';
+  const obs = fields.filter(([k]) => le[k]).map(([k,l]) => `<div><strong>${l}:</strong> ${le[k]}</div>`);
+  return obs.length ? `<div class="modal-obs">${obs.join('')}</div>` : '';
+}
+
+// ===== EXPORT CSV =====
+async function exportCSV() {
+  const filters = getFilters();
+  const qs = new URLSearchParams(filters).toString();
+
+  try {
+    const res = await fetch(`/api/evaluations?${qs}`);
+    const evals = await res.json();
+
+    if (!evals.length) {
+      alert('Nenhum dado para exportar.');
+      return;
+    }
+
+    // Fetch detailed data for all evaluations
+    const detailPromises = evals.map(ev => fetch(`/api/evaluation?id=${ev.id}`).then(r => r.json()));
+    const details = await Promise.all(detailPromises);
+
+    // Build CSV rows
+    const rows = [
+      ['Unidade','Série','Turma','Grupo','Líder',
+       'Tipo','Nome Avaliado',
+       'Responsabilidade','Responsabilidade Obs',
+       'Relacionamento/Espírito Equipe','Relacionamento/Espírito Equipe Obs',
+       'Cooperação/Orientação Prof.','Cooperação/Orientação Prof. Obs',
+       'Organização/Iniciativa','Organização/Iniciativa Obs',
+       'Educação','Educação Obs'].join(';')
+    ];
+
+    details.forEach(d => {
+      const base = [d.unit, `${d.grade}º`, d.class, `Grupo ${d.group_number}`, d.leader_name];
+
+      (d.members || []).forEach(m => {
+        rows.push([
+          ...base, 'Integrante', m.member_name,
+          m.responsabilidade, csvSafe(m.responsabilidade_obs),
+          m.relacionamento, csvSafe(m.relacionamento_obs),
+          m.cooperacao, csvSafe(m.cooperacao_obs),
+          m.organizacao, csvSafe(m.organizacao_obs),
+          m.educacao, csvSafe(m.educacao_obs)
+        ].join(';'));
+      });
+
+      if (d.leaderEval) {
+        const le = d.leaderEval;
+        rows.push([
+          ...base, 'Líder', d.leader_name,
+          le.responsabilidade, csvSafe(le.responsabilidade_obs),
+          le.espirito_equipe, csvSafe(le.espirito_equipe_obs),
+          le.orientacao_professor, csvSafe(le.orientacao_professor_obs),
+          le.iniciativa, csvSafe(le.iniciativa_obs),
+          le.educacao, csvSafe(le.educacao_obs)
+        ].join(';'));
+      }
+    });
+
+    // Trigger download
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `avaliacoes_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Export error:', e);
+    alert('Erro ao exportar.');
+  }
+}
+
+function csvSafe(val) {
+  if (!val) return '';
+  return `"${String(val).replace(/"/g, '""')}"`;
 }
 
 // ===== HELPERS =====
-function r(v) { return v ? Math.round(v * 100) / 100 : 0; }
+function r(v) { return v != null ? Math.round(v * 100) / 100 : 0; }
 function destroyChart(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
+
 function noData(canvasId) {
   const canvas = $(`#${canvasId}`);
   const parent = canvas.parentElement;
-  const existing = parent.querySelector('.empty-state');
-  if (!existing) {
+  if (!parent.querySelector('.empty-state')) {
     canvas.style.display = 'none';
     parent.insertAdjacentHTML('beforeend', '<div class="empty-state"><span class="emoji">📭</span><p>Sem dados para exibir.</p></div>');
   }
 }
+
 function clearNoData(canvasId) {
   const canvas = $(`#${canvasId}`);
   const parent = canvas.parentElement;

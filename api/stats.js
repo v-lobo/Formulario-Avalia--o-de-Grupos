@@ -5,8 +5,6 @@ export default async function handler(req, res) {
 
   const { unit, grade, class: cls, group_number } = req.query;
 
-  // We fetch evaluations with related members and leader evaluations
-  // And then aggregate the statistics in memory since it's much simpler than complex SQL RPCs
   let query = supabase.from('evaluations').select('*, member_evaluations(*), leader_evaluations(*)');
 
   if (unit) query = query.eq('unit', unit);
@@ -17,22 +15,23 @@ export default async function handler(req, res) {
   const { data: evals, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
-  // Initialize aggregates
-  let memberStats = { 
-    total_evals: evals.length, total_members: 0, 
-    avg_resp: 0, avg_rel: 0, avg_coop: 0, avg_org: 0, avg_edu: 0 
+  // Aggregates
+  let memberStats = {
+    total_evals: evals.length, total_members: 0, low_scores: 0,
+    avg_resp: 0, avg_rel: 0, avg_coop: 0, avg_org: 0, avg_edu: 0
   };
-  
-  let leaderStats = { 
-    total_leader_evals: 0, 
-    avg_resp: 0, avg_esp: 0, avg_ori: 0, avg_ini: 0, avg_edu: 0 
+
+  let leaderStats = {
+    total_leader_evals: 0, low_scores: 0,
+    avg_resp: 0, avg_esp: 0, avg_ori: 0, avg_ini: 0, avg_edu: 0
   };
 
   const groupMap = new Map();
-  const classMap = new Map();
+
+  function countLow(...scores) { return scores.filter(s => s <= 2).length; }
 
   evals.forEach(e => {
-    // Member Stats Aggregation
+    // Member Stats
     if (e.member_evaluations && e.member_evaluations.length > 0) {
       e.member_evaluations.forEach(m => {
         memberStats.total_members++;
@@ -41,25 +40,33 @@ export default async function handler(req, res) {
         memberStats.avg_coop += m.cooperacao;
         memberStats.avg_org += m.organizacao;
         memberStats.avg_edu += m.educacao;
+        memberStats.low_scores += countLow(m.responsabilidade, m.relacionamento, m.cooperacao, m.organizacao, m.educacao);
 
-        // Group Stats
         const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
-        if (!groupMap.has(gKey)) groupMap.set(gKey, { unit: e.unit, grade: e.grade, class: e.class, group_number: e.group_number, member_count: 0, r:0, rel:0, c:0, o:0, edu:0 });
+        if (!groupMap.has(gKey)) groupMap.set(gKey, {
+          unit: e.unit, grade: e.grade, class: e.class, group_number: e.group_number,
+          leader_name: e.leader_name,
+          member_count: 0, r: 0, rel: 0, c: 0, o: 0, edu: 0,
+          leader_r: 0, leader_esp: 0, leader_ori: 0, leader_ini: 0, leader_edu: 0,
+          has_leader: false, low_scores: 0, low_details: []
+        });
         const gs = groupMap.get(gKey);
-        gs.member_count++; gs.r += m.responsabilidade; gs.rel += m.relacionamento; gs.c += m.cooperacao; gs.o += m.organizacao; gs.edu += m.educacao;
+        gs.member_count++;
+        gs.r += m.responsabilidade; gs.rel += m.relacionamento; gs.c += m.cooperacao; gs.o += m.organizacao; gs.edu += m.educacao;
 
-        // Class Stats
-        const cKey = `${e.unit}|${e.grade}|${e.class}`;
-        if (!classMap.has(cKey)) classMap.set(cKey, { unit: e.unit, grade: e.grade, class: e.class, member_count: 0, group_set: new Set(), r:0, rel:0, c:0, o:0, edu:0 });
-        const cs = classMap.get(cKey);
-        cs.member_count++; cs.group_set.add(e.group_number);
-        cs.r += m.responsabilidade; cs.rel += m.relacionamento; cs.c += m.cooperacao; cs.o += m.organizacao; cs.edu += m.educacao;
+        // Track low scores for attention points
+        const lowFields = [];
+        if (m.responsabilidade <= 2) lowFields.push('Responsabilidade');
+        if (m.relacionamento <= 2) lowFields.push('Relacionamento');
+        if (m.cooperacao <= 2) lowFields.push('Cooperação');
+        if (m.organizacao <= 2) lowFields.push('Organização');
+        if (m.educacao <= 2) lowFields.push('Educação');
+        if (lowFields.length) gs.low_details.push({ name: m.member_name, fields: lowFields });
       });
     }
 
-    // Leader Stats Aggregation
+    // Leader Stats
     if (e.leader_evaluations && e.leader_evaluations.length > 0) {
-      // Assuming 1 leader evaluation per evaluation session
       const le = e.leader_evaluations[0];
       leaderStats.total_leader_evals++;
       leaderStats.avg_resp += le.responsabilidade;
@@ -67,6 +74,23 @@ export default async function handler(req, res) {
       leaderStats.avg_ori += le.orientacao_professor;
       leaderStats.avg_ini += le.iniciativa;
       leaderStats.avg_edu += le.educacao;
+      leaderStats.low_scores += countLow(le.responsabilidade, le.espirito_equipe, le.orientacao_professor, le.iniciativa, le.educacao);
+
+      const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
+      if (groupMap.has(gKey)) {
+        const gs = groupMap.get(gKey);
+        gs.has_leader = true;
+        gs.leader_r = le.responsabilidade; gs.leader_esp = le.espirito_equipe;
+        gs.leader_ori = le.orientacao_professor; gs.leader_ini = le.iniciativa; gs.leader_edu = le.educacao;
+        // Track leader low scores
+        const lowFields = [];
+        if (le.responsabilidade <= 2) lowFields.push('Responsabilidade (líder)');
+        if (le.espirito_equipe <= 2) lowFields.push('Espírito de Equipe');
+        if (le.orientacao_professor <= 2) lowFields.push('Orientação Prof.');
+        if (le.iniciativa <= 2) lowFields.push('Iniciativa');
+        if (le.educacao <= 2) lowFields.push('Educação (líder)');
+        if (lowFields.length) gs.low_details.push({ name: e.leader_name + ' (líder)', fields: lowFields });
+      }
     }
   });
 
@@ -75,7 +99,7 @@ export default async function handler(req, res) {
     const tm = memberStats.total_members;
     memberStats.avg_resp /= tm; memberStats.avg_rel /= tm; memberStats.avg_coop /= tm; memberStats.avg_org /= tm; memberStats.avg_edu /= tm;
   }
-  
+
   if (leaderStats.total_leader_evals > 0) {
     const tl = leaderStats.total_leader_evals;
     leaderStats.avg_resp /= tl; leaderStats.avg_esp /= tl; leaderStats.avg_ori /= tl; leaderStats.avg_ini /= tl; leaderStats.avg_edu /= tl;
@@ -83,46 +107,37 @@ export default async function handler(req, res) {
 
   // Format Group Stats
   const groupStats = Array.from(groupMap.values()).map(g => {
-    const count = g.member_count;
+    const count = g.member_count || 1;
     const avg_resp = g.r / count, avg_rel = g.rel / count, avg_coop = g.c / count, avg_org = g.o / count, avg_edu = g.edu / count;
-    return {
-      ...g, avg_resp, avg_rel, avg_coop, avg_org, avg_edu,
-      avg_overall: (avg_resp + avg_rel + avg_coop + avg_org + avg_edu) / 5
-    };
-  }).sort((a, b) => b.avg_overall - a.avg_overall);
-
-  // Format Class Stats
-  const classStats = Array.from(classMap.values()).map(c => {
-    const count = c.member_count;
-    const avg_resp = c.r / count, avg_rel = c.rel / count, avg_coop = c.c / count, avg_org = c.o / count, avg_edu = c.edu / count;
-    return {
-      unit: c.unit, grade: c.grade, class: c.class, member_count: c.member_count, group_count: c.group_set.size,
-      avg_resp, avg_rel, avg_coop, avg_org, avg_edu,
-      avg_overall: (avg_resp + avg_rel + avg_coop + avg_org + avg_edu) / 5
-    };
-  }).sort((a, b) => a.unit.localeCompare(b.unit) || a.grade.localeCompare(b.grade) || a.class.localeCompare(b.class));
-
-  // Extract Leader Group Stats natively
-  const leaderGroupMap = new Map();
-  evals.forEach(e => {
-    if (e.leader_evaluations && e.leader_evaluations.length > 0) {
-      const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
-      if (!leaderGroupMap.has(gKey)) leaderGroupMap.set(gKey, { unit: e.unit, grade: e.grade, class: e.class, group_number: e.group_number, eval_count: 0, r:0, esp:0, ori:0, ini:0, edu:0 });
-      const lg = leaderGroupMap.get(gKey);
-      const le = e.leader_evaluations[0];
-      lg.eval_count++; lg.r += le.responsabilidade; lg.esp += le.espirito_equipe; lg.ori += le.orientacao_professor; lg.ini += le.iniciativa; lg.edu += le.educacao;
+    const member_avg = (avg_resp + avg_rel + avg_coop + avg_org + avg_edu) / 5;
+    let leader_avg = null;
+    if (g.has_leader) {
+      leader_avg = (g.leader_r + g.leader_esp + g.leader_ori + g.leader_ini + g.leader_edu) / 5;
     }
-  });
-
-  const leaderGroupStats = Array.from(leaderGroupMap.values()).map(lg => {
-    const count = lg.eval_count;
-    const avg_resp = lg.r / count, avg_esp = lg.esp / count, avg_ori = lg.ori / count, avg_ini = lg.ini / count, avg_edu = lg.edu / count;
     return {
-      unit: lg.unit, grade: lg.grade, class: lg.class, group_number: lg.group_number,
-      avg_resp, avg_esp, avg_ori, avg_ini, avg_edu,
-      avg_overall: (avg_resp + avg_esp + avg_ori + avg_ini + avg_edu) / 5
+      unit: g.unit, grade: g.grade, class: g.class, group_number: g.group_number,
+      leader_name: g.leader_name, member_count: g.member_count,
+      avg_resp, avg_rel, avg_coop, avg_org, avg_edu,
+      member_avg, leader_avg,
+      low_details: g.low_details
     };
-  }).sort((a, b) => b.avg_overall - a.avg_overall);
+  }).sort((a, b) => (b.member_avg || 0) - (a.member_avg || 0));
 
-  res.status(200).json({ memberStats, leaderStats, groupStats, classStats, leaderGroupStats });
+  // Combined avg (all member + leader criteria)
+  let combinedSum = 0, combinedCount = 0;
+  if (memberStats.total_members > 0) {
+    combinedSum += (memberStats.avg_resp + memberStats.avg_rel + memberStats.avg_coop + memberStats.avg_org + memberStats.avg_edu);
+    combinedCount += 5;
+  }
+  if (leaderStats.total_leader_evals > 0) {
+    combinedSum += (leaderStats.avg_resp + leaderStats.avg_esp + leaderStats.avg_ori + leaderStats.avg_ini + leaderStats.avg_edu);
+    combinedCount += 5;
+  }
+  const combinedAvg = combinedCount > 0 ? combinedSum / combinedCount : 0;
+  const totalLowScores = memberStats.low_scores + leaderStats.low_scores;
+
+  res.status(200).json({
+    memberStats, leaderStats, groupStats,
+    combinedAvg, totalLowScores
+  });
 }
