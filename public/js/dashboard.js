@@ -364,7 +364,12 @@ function renderSummaryTable(stats) {
       <td>${memberBadge}</td>
       <td>${leaderBadge}</td>
       <td>${attentionHTML}</td>
-      <td><button class="btn-view" onclick="viewDetail(${g.group_number}, '${g.unit}', '${g.grade}', '${g.class}')">Ver</button></td>
+      <td>
+        <div style="display:flex; gap:8px">
+          <button class="btn-view" onclick="viewDetail(${g.group_number}, '${g.unit}', '${g.grade}', '${g.class}')">Ver</button>
+          <button class="btn-view" style="background:rgba(239,68,68,.15);color:var(--danger);border:none" onclick="deleteEvaluation(${g.id})" title="Excluir">🗑️</button>
+        </div>
+      </td>
     </tr>`;
   });
 
@@ -399,9 +404,11 @@ function showDetailModal(data) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
 
-  const membersHTML = (data.members || []).map(m => `
+  const membersHTML = (data.members || []).map(m => {
+    const avg = (m.responsabilidade + m.relacionamento + m.cooperacao + m.organizacao + m.educacao) / 5;
+    return `
     <div class="modal-member">
-      <div class="modal-member-name">👤 ${m.member_name}</div>
+      <div class="modal-member-name">👤 ${m.member_name} <span style="font-size:0.85em;color:var(--text-muted);font-weight:normal;margin-left:8px">(Média: ${avg.toFixed(1)}/5)</span></div>
       <div class="modal-scores">
         <span>📌 Responsabilidade: ${scoreInline(m.responsabilidade)}</span>
         <span>🤝 Relacionamento: ${scoreInline(m.relacionamento)}</span>
@@ -411,13 +418,14 @@ function showDetailModal(data) {
       </div>
       ${obsSection(m)}
     </div>
-  `).join('');
+  `}).join('');
 
   let leaderHTML = '';
   if (data.leaderEval) {
     const le = data.leaderEval;
+    const avg = (le.responsabilidade + le.espirito_equipe + le.orientacao_professor + le.iniciativa + le.educacao) / 5;
     leaderHTML = `
-      <div class="modal-section-title leader">👑 Avaliação do Líder: ${data.leader_name}</div>
+      <div class="modal-section-title leader">👑 Avaliação do Líder: ${data.leader_name} <span style="font-size:0.85em;color:var(--text-muted);font-weight:normal;margin-left:8px">(Média: ${avg.toFixed(1)}/5)</span></div>
       <div class="modal-member">
         <div class="modal-scores">
           <span>📌 Responsabilidade: ${scoreInline(le.responsabilidade)}</span>
@@ -446,6 +454,24 @@ function showDetailModal(data) {
   document.body.appendChild(overlay);
   overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function deleteEvaluation(id) {
+  if (!confirm("Tem certeza que deseja excluir esta avaliação? Esta ação não pode ser desfeita.")) return;
+  
+  try {
+    const res = await fetch(`/api/delete?id=${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      alert("Avaliação excluída com sucesso.");
+      loadData(); // Recarrega os dados da tabela
+    } else {
+      const err = await res.json();
+      alert("Erro ao excluir: " + (err.error || "Desconhecido"));
+    }
+  } catch (e) {
+    console.error("Erro na exclusão:", e);
+    alert("Erro de conexão ao tentar excluir.");
+  }
 }
 
 function scoreInline(v) {

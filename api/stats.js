@@ -44,6 +44,7 @@ export default async function handler(req, res) {
 
         const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
         if (!groupMap.has(gKey)) groupMap.set(gKey, {
+          id: e.id,
           unit: e.unit, grade: e.grade, class: e.class, group_number: e.group_number,
           leader_name: e.leader_name,
           member_count: 0, r: 0, rel: 0, c: 0, o: 0, edu: 0,
