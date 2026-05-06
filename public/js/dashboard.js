@@ -141,10 +141,20 @@ function renderStatsCards(stats) {
   const combinedAvg = stats.combinedAvg || 0;
   const totalLow = stats.totalLowScores || 0;
 
+  // Compute separate averages
+  const memberAvg = ms.total_members > 0
+    ? ((ms.avg_resp || 0) + (ms.avg_rel || 0) + (ms.avg_coop || 0) + (ms.avg_org || 0) + (ms.avg_edu || 0)) / 5
+    : 0;
+  const leaderAvg = ls.total_leader_evals > 0
+    ? ((ls.avg_resp || 0) + (ls.avg_esp || 0) + (ls.avg_ori || 0) + (ls.avg_ini || 0) + (ls.avg_edu || 0)) / 5
+    : 0;
+
   const cards = [
     { icon: '📋', color: 'purple', value: ms.total_evals || 0, label: 'Formulários' },
     { icon: '👥', color: 'green', value: ms.total_members || 0, label: 'Integrantes avaliados' },
     { icon: '⭐', color: 'amber', value: combinedAvg ? combinedAvg.toFixed(1) : '—', label: 'Média geral' },
+    { icon: '👤', color: 'blue', value: memberAvg ? memberAvg.toFixed(1) : '—', label: 'Média integrantes' },
+    { icon: '👑', color: 'gold', value: leaderAvg ? leaderAvg.toFixed(1) : '—', label: 'Média líderes' },
     { icon: '⚠️', color: 'red', value: totalLow, label: 'Notas 1 ou 2' },
   ];
 

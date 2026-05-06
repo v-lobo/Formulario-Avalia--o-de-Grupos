@@ -214,11 +214,11 @@
 /* ----- Stats Grid ----- */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin-bottom: 20px;
 }
-@media(max-width:768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media(max-width:900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 @media(max-width:400px) { .stats-grid { grid-template-columns: 1fr; } }
 
 .stat-card {
@@ -249,6 +249,8 @@
 .stat-icon-wrap.purple { background: var(--dash-accent-soft); }
 .stat-icon-wrap.green  { background: var(--dash-green-soft); }
 .stat-icon-wrap.amber  { background: var(--dash-amber-soft); }
+.stat-icon-wrap.blue   { background: var(--dash-blue-soft); }
+.stat-icon-wrap.gold   { background: rgba(245,158,11,.12); }
 .stat-icon-wrap.red    { background: var(--dash-red-soft); }
 .stat-info { flex: 1; min-width: 0; }
 .stat-value {
