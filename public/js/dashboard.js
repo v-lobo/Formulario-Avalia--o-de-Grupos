@@ -6,12 +6,10 @@ const $$ = s => document.querySelectorAll(s);
 document.addEventListener('DOMContentLoaded', () => {
   $('#auth-btn').addEventListener('click', authenticate);
   $('#auth-pass').addEventListener('keydown', e => { if (e.key === 'Enter') authenticate(); });
-  if (sessionStorage.getItem('dash_auth')) showDashboard();
 });
 
 function authenticate() {
   if ($('#auth-pass').value === AUTH_PASS) {
-    sessionStorage.setItem('dash_auth', '1');
     showDashboard();
   } else {
     $('#auth-pass').style.borderColor = 'var(--danger)';
