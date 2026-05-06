@@ -31,6 +31,19 @@ export default async function handler(req, res) {
   function countLow(...scores) { return scores.filter(s => s <= 2).length; }
 
   evals.forEach(e => {
+    const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
+    if (!groupMap.has(gKey)) {
+      groupMap.set(gKey, {
+        id: e.id,
+        unit: e.unit, grade: e.grade, class: e.class, group_number: e.group_number,
+        leader_name: e.leader_name,
+        member_count: 0, r: 0, rel: 0, c: 0, o: 0, edu: 0,
+        leader_r: 0, leader_esp: 0, leader_ori: 0, leader_ini: 0, leader_edu: 0,
+        has_leader: false, low_scores: 0, low_details: []
+      });
+    }
+    const gs = groupMap.get(gKey);
+
     // Member Stats
     if (e.member_evaluations && e.member_evaluations.length > 0) {
       e.member_evaluations.forEach(m => {
@@ -42,16 +55,6 @@ export default async function handler(req, res) {
         memberStats.avg_edu += m.educacao;
         memberStats.low_scores += countLow(m.responsabilidade, m.relacionamento, m.cooperacao, m.organizacao, m.educacao);
 
-        const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
-        if (!groupMap.has(gKey)) groupMap.set(gKey, {
-          id: e.id,
-          unit: e.unit, grade: e.grade, class: e.class, group_number: e.group_number,
-          leader_name: e.leader_name,
-          member_count: 0, r: 0, rel: 0, c: 0, o: 0, edu: 0,
-          leader_r: 0, leader_esp: 0, leader_ori: 0, leader_ini: 0, leader_edu: 0,
-          has_leader: false, low_scores: 0, low_details: []
-        });
-        const gs = groupMap.get(gKey);
         gs.member_count++;
         gs.r += m.responsabilidade; gs.rel += m.relacionamento; gs.c += m.cooperacao; gs.o += m.organizacao; gs.edu += m.educacao;
 
@@ -77,21 +80,18 @@ export default async function handler(req, res) {
       leaderStats.avg_edu += le.educacao;
       leaderStats.low_scores += countLow(le.responsabilidade, le.espirito_equipe, le.orientacao_professor, le.iniciativa, le.educacao);
 
-      const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
-      if (groupMap.has(gKey)) {
-        const gs = groupMap.get(gKey);
-        gs.has_leader = true;
-        gs.leader_r = le.responsabilidade; gs.leader_esp = le.espirito_equipe;
-        gs.leader_ori = le.orientacao_professor; gs.leader_ini = le.iniciativa; gs.leader_edu = le.educacao;
-        // Track leader low scores
-        const lowFields = [];
-        if (le.responsabilidade <= 2) lowFields.push('Responsabilidade (líder)');
-        if (le.espirito_equipe <= 2) lowFields.push('Espírito de Equipe');
-        if (le.orientacao_professor <= 2) lowFields.push('Orientação Prof.');
-        if (le.iniciativa <= 2) lowFields.push('Iniciativa');
-        if (le.educacao <= 2) lowFields.push('Educação (líder)');
-        if (lowFields.length) gs.low_details.push({ name: e.leader_name + ' (líder)', fields: lowFields });
-      }
+      gs.has_leader = true;
+      gs.leader_r = le.responsabilidade; gs.leader_esp = le.espirito_equipe;
+      gs.leader_ori = le.orientacao_professor; gs.leader_ini = le.iniciativa; gs.leader_edu = le.educacao;
+      
+      // Track leader low scores
+      const lowFields = [];
+      if (le.responsabilidade <= 2) lowFields.push('Responsabilidade (líder)');
+      if (le.espirito_equipe <= 2) lowFields.push('Espírito de Equipe');
+      if (le.orientacao_professor <= 2) lowFields.push('Orientação Prof.');
+      if (le.iniciativa <= 2) lowFields.push('Iniciativa');
+      if (le.educacao <= 2) lowFields.push('Educação (líder)');
+      if (lowFields.length) gs.low_details.push({ name: e.leader_name + ' (líder)', fields: lowFields });
     }
   });
 
