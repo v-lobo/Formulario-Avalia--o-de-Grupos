@@ -116,6 +116,7 @@ export default async function handler(req, res) {
       leader_avg = (g.leader_r + g.leader_esp + g.leader_ori + g.leader_ini + g.leader_edu) / 5;
     }
     return {
+      id: g.id,
       unit: g.unit, grade: g.grade, class: g.class, group_number: g.group_number,
       leader_name: g.leader_name, member_count: g.member_count,
       avg_resp, avg_rel, avg_coop, avg_org, avg_edu,
