@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   function countLow(...scores) { return scores.filter(s => s <= 2).length; }
 
   evals.forEach(e => {
-    const gKey = `${e.unit}|${e.grade}|${e.class}|${e.group_number}`;
+    const gKey = e.id;
     if (!groupMap.has(gKey)) {
       groupMap.set(gKey, {
         id: e.id,
