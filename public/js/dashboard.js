@@ -153,14 +153,14 @@ function renderStatsCards(stats) {
     { icon: '⭐', color: 'amber', value: combinedAvg ? combinedAvg.toFixed(1) : '—', label: 'Média geral' },
     { icon: '👤', color: 'blue', value: memberAvg ? memberAvg.toFixed(1) : '—', label: 'Média integrantes' },
     { icon: '👑', color: 'gold', value: leaderAvg ? leaderAvg.toFixed(1) : '—', label: 'Média líderes' },
-    { icon: '⚠️', color: 'red', value: totalLow, label: 'Notas 1 ou 2' },
+    { icon: '⚠️', color: 'red', value: totalLow, subValue: stats.totalPossibleScores ? `/ ${stats.totalPossibleScores}` : '', label: 'Notas 1 ou 2' },
   ];
 
   $('#stats-cards').innerHTML = cards.map(c => `
     <div class="stat-card">
       <div class="stat-icon-wrap ${c.color}">${c.icon}</div>
       <div class="stat-info">
-        <div class="stat-value">${c.value}</div>
+        <div class="stat-value">${c.value}${c.subValue ? ` <span style="font-size:0.65em;color:var(--text-muted);font-weight:600;margin-left:4px">${c.subValue}</span>` : ''}</div>
         <div class="stat-label">${c.label}</div>
       </div>
     </div>

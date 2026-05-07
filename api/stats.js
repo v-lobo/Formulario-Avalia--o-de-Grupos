@@ -137,9 +137,10 @@ export default async function handler(req, res) {
   }
   const combinedAvg = combinedCount > 0 ? combinedSum / combinedCount : 0;
   const totalLowScores = memberStats.low_scores + leaderStats.low_scores;
+  const totalPossibleScores = (memberStats.total_members * 5) + (leaderStats.total_leader_evals * 5);
 
   res.status(200).json({
     memberStats, leaderStats, groupStats,
-    combinedAvg, totalLowScores
+    combinedAvg, totalLowScores, totalPossibleScores
   });
 }
