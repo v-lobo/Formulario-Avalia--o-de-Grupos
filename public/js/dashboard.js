@@ -160,7 +160,7 @@ function renderStatsCards(stats) {
     <div class="stat-card">
       <div class="stat-icon-wrap ${c.color}">${c.icon}</div>
       <div class="stat-info">
-        <div class="stat-value">${c.value}${c.subValue ? ` <span style="font-size:0.65em;color:var(--text-muted);font-weight:600;margin-left:4px">${c.subValue}</span>` : ''}</div>
+        <div class="stat-value">${c.value}${c.subValue ? ` <span style="font-size:0.45em;color:var(--text-muted);font-weight:600;margin-left:4px">${c.subValue}</span>` : ''}</div>
         <div class="stat-label">${c.label}</div>
       </div>
     </div>
