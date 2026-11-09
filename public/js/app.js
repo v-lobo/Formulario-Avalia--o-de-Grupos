@@ -203,7 +203,7 @@ async function checkConnection() {
       "Armazenamento indisponível. Você pode preencher as respostas, mas o envio precisa da conexão com o banco.";
   }
 }
-$$('input[name="unit"],input[name="grade"]').forEach((el) =>
+$$('[name="unit"],[name="grade"]').forEach((el) =>
   el.addEventListener("change", updateClasses),
 );
 $("#next-1").addEventListener("click", () => {
