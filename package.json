@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "description": "Formulário de Avaliação de Desempenho de Alunos",
   "main": "server.js",
-  "scripts": {},
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test tests/*.test.js"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.105.3"
+    "@supabase/supabase-js": "2.105.3"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

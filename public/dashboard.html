@@ -1,129 +1,137 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel do Professor — Avaliação de Grupos</title>
-  <meta name="description" content="Painel de análise das avaliações de desempenho dos alunos">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/dashboard.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
-</head>
-<body class="dash-body">
-
-  <!-- Auth Gate -->
-  <div id="auth-gate" class="auth-gate">
-    <div class="auth-card">
-      <span style="font-size:3rem;display:block;margin-bottom:12px">🔐</span>
-      <h2>Área do Professor</h2>
-      <p>Digite a senha para acessar o painel de análises.</p>
-      <div class="form-group">
-        <label for="auth-pass">Senha</label>
-        <input type="password" id="auth-pass" placeholder="Digite a senha">
-      </div>
-      <button class="btn btn-primary" id="auth-btn">Entrar</button>
-    </div>
-  </div>
-
-  <!-- Dashboard -->
-  <div id="dashboard" style="display:none">
-
-    <!-- Header -->
-    <header class="dash-header">
-      <div class="dash-header-left">
-        <h1>📊 Painel do Professor</h1>
-      </div>
-      <div class="dash-header-right">
-        <button id="theme-toggle" class="theme-toggle" title="Alternar tema">
-          <span class="theme-icon">🌙</span>
-        </button>
-        <a href="/" class="back-link">← Formulário</a>
-      </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Painel do professor · STEM | Contato</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script src="/js/dashboard.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/"
+        ><img
+          src="/logocolegiocontato.png"
+          alt="Colégio Contato Maceió"
+          width="180" /></a
+      ><a class="teacher-link" href="/">Voltar ao formulário ↗</a>
     </header>
-
-    <div class="dash-container">
-
-      <!-- Filters -->
-      <div class="filters-bar">
-        <div class="filters-row">
-          <div class="filter-group">
-            <label class="filter-label">Unidade</label>
-            <select id="f-unit">
+    <main class="dash-main">
+      <form class="login-card" id="login">
+        <p class="eyebrow">ACOMPANHAMENTO PEDAGÓGICO</p>
+        <h1>Área do professor</h1>
+        <p>Acesse as avaliações individuais das equipes de STEM.</p>
+        <label class="field"
+          >Senha<input
+            type="password"
+            id="password"
+            autocomplete="current-password"
+            required /></label
+        ><button class="primary" type="submit" id="login-button">
+          Entrar no painel →
+        </button>
+      </form>
+      <div id="dashboard" hidden>
+        <div class="dash-heading">
+          <div>
+            <p class="eyebrow">STEM · SEGUNDO SEMESTRE</p>
+            <h1>Olhar para cada equipe.</h1>
+            <p>Contribuições individuais, colaboração e pontos de atenção.</p>
+          </div>
+          <div class="dash-actions">
+            <button class="secondary" id="refresh">Atualizar</button
+            ><button class="primary" id="export">Exportar CSV</button
+            ><button class="secondary" id="logout">Sair</button>
+          </div>
+        </div>
+        <div class="filters">
+          <label class="field"
+            >Ano letivo<select id="f-year">
+              <option>2026</option>
+            </select></label
+          ><label class="field"
+            >Unidade<select id="f-unit">
               <option value="">Todas</option>
-              <option value="Farol">Farol</option>
-              <option value="Jatiúca">Jatiúca</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Série</label>
-            <select id="f-grade">
+              <option>Farol</option>
+              <option>Jatiúca</option>
+            </select></label
+          ><label class="field"
+            >Série<select id="f-grade">
               <option value="">Todas</option>
-              <option value="6">6º Ano</option>
-              <option value="7">7º Ano</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Turma</label>
-            <select id="f-class"><option value="">Todas</option></select>
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Grupo</label>
-            <select id="f-group">
+              <option value="6">6º ano</option>
+              <option value="7">7º ano</option>
+            </select></label
+          ><label class="field"
+            >Turma<select id="f-class">
+              <option value="">Todas</option>
+              <option>A</option>
+              <option>B</option>
+              <option>C</option>
+              <option>D</option>
+              <option>E</option>
+            </select></label
+          ><label class="field"
+            >Grupo<select id="f-group">
               <option value="">Todos</option>
-              <option value="1">Grupo 1</option><option value="2">Grupo 2</option>
-              <option value="3">Grupo 3</option><option value="4">Grupo 4</option>
-              <option value="5">Grupo 5</option><option value="6">Grupo 6</option>
-            </select>
+              <option>1</option>
+              <option>2</option>
+              <option>3</option>
+              <option>4</option>
+              <option>5</option>
+              <option>6</option>
+            </select></label
+          >
+        </div>
+        <p id="load-status" role="status"></p>
+        <div id="metrics" class="metrics"></div>
+        <section class="analysis">
+          <h2>Média por critério</h2>
+          <div id="criteria-bars" class="bars"></div>
+        </section>
+        <section class="analysis">
+          <h2>Resumo por equipe</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Equipe</th>
+                  <th>Respostas</th>
+                  <th>Avaliações entre colegas</th>
+                  <th>Média</th>
+                  <th>Notas 1 ou 2</th>
+                </tr>
+              </thead>
+              <tbody id="team-rows"></tbody>
+            </table>
           </div>
-        </div>
-        <div class="filters-actions">
-          <button class="btn btn-ghost btn-sm" id="btn-clear-filters">Limpar filtros</button>
-          <button class="btn btn-outline btn-sm" id="btn-export-csv">📥 Exportar CSV</button>
-        </div>
+        </section>
+        <section class="analysis">
+          <h2>Acompanhamento por aluno</h2>
+          <p class="section-description">
+            Nomes iguais são agrupados por unidade, série, turma e grupo.
+            Variações de escrita podem aparecer separadas.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Aluno avaliado</th>
+                  <th>Equipe</th>
+                  <th>Avaliações recebidas</th>
+                  <th>Média</th>
+                  <th>Notas 1 ou 2</th>
+                </tr>
+              </thead>
+              <tbody id="student-rows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="analysis">
+          <h2>Respostas e observações</h2>
+          <div id="responses"></div>
+        </section>
       </div>
-
-      <!-- Stats Cards -->
-      <div class="stats-grid" id="stats-cards"></div>
-
-      <!-- Charts Section -->
-      <div class="section-grid">
-        <div class="panel-card" id="panel-criteria">
-          <div class="panel-header">
-            <h2>📊 Média por Critério</h2>
-            <p class="panel-subtitle">Comparação entre critérios de integrantes e líderes</p>
-          </div>
-          <div class="panel-body">
-            <canvas id="chart-criteria"></canvas>
-          </div>
-        </div>
-
-        <div class="panel-card" id="panel-teams">
-          <div class="panel-header">
-            <h2>🔄 Equipes em Comparação</h2>
-            <p class="panel-subtitle">Média dos colegas vs média do líder por equipe</p>
-          </div>
-          <div class="panel-body">
-            <canvas id="chart-teams"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- Summary Table -->
-      <div class="panel-card full-width" id="panel-summary">
-        <div class="panel-header">
-          <h2>📋 Resumo por Equipe</h2>
-          <p class="panel-subtitle">Visão detalhada com pontos de atenção</p>
-        </div>
-        <div class="panel-body" style="overflow-x:auto">
-          <div id="summary-table-container"></div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <script src="/js/dashboard.js"></script>
-</body>
+      <p id="dashboard-error" class="error-message" role="alert" hidden></p>
+    </main>
+  </body>
 </html>

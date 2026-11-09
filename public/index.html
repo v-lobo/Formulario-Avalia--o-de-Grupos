@@ -1,179 +1,210 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Avaliação de Desempenho — Projeto Escolar</title>
-  <meta name="description" content="Formulário de avaliação de desempenho de alunos em projetos escolares">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
-</head>
-<body>
-  <div style="position:fixed;top:16px;right:16px;z-index:9999;display:flex;gap:12px;align-items:center;">
-    <a href="/dashboard.html" id="secret-dashboard-btn" style="text-decoration:none;font-size:0.75rem;font-weight:600;color:var(--text-dim);opacity:0.4;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">Painel</a>
-    <button id="theme-toggle" class="theme-toggle" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:50%;width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:var(--transition);" title="Alternar tema">
-      <span class="theme-icon">🌙</span>
-    </button>
-  </div>
-
-  <!-- Progress Bar -->
-  <div class="progress-container">
-    <div class="progress-steps">
-      <div class="step active" data-step="1">
-        <div class="step-icon">1</div><span>Identificação</span>
-      </div>
-      <div class="step-line" id="line-1-2"></div>
-      <div class="step" data-step="2">
-        <div class="step-icon">2</div><span>Avaliação</span>
-      </div>
-      <div class="step-line" id="line-2-3"></div>
-      <div class="step" data-step="3">
-        <div class="step-icon">3</div><span>Equipe</span>
-      </div>
-      <div class="step-line" id="line-3-4"></div>
-      <div class="step" data-step="4">
-        <div class="step-icon">4</div><span>Líder</span>
-      </div>
-      <div class="step-line" id="line-4-5"></div>
-      <div class="step" data-step="5">
-        <div class="step-icon">✓</div><span>Fim</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="container">
-
-    <!-- ========== STEP 1: Leader Info ========== -->
-    <div class="form-step active" id="step-1">
-      <div class="card">
-        <div class="card-header">
-          <span class="emoji">📋</span>
-          <h1>Formulário de Avaliação - STEM</h1>
-          <p class="subtitle">Preencha as informações do seu grupo para começar, responda sempre com honestidade e seriedade.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Avaliação de equipes · STEM | Colégio Contato</title>
+    <meta
+      name="description"
+      content="Avaliação individual dos colegas de equipe de STEM, segundo semestre, Colégio Contato."
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script src="/js/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" aria-label="Início"
+        ><img
+          src="/logocolegiocontato.png"
+          alt="Colégio Contato Maceió"
+          width="180" /></a
+      ><a class="teacher-link" href="/dashboard.html"
+        >Área do professor <span aria-hidden="true">↗</span></a
+      >
+    </header>
+    <main class="layout">
+      <aside class="intro">
+        <span class="subject"
+          >STEM <span>·</span> <span data-period>2º semestre · 2026</span></span
+        >
+        <h1>Uma boa equipe<br />cresce <em>junto.</em></h1>
+        <p>
+          Olhe para o que vocês construíram e reconheça a contribuição de cada
+          colega.
+        </p>
+        <div class="intro-rule"></div>
+        <h2>Sua opinião faz a diferença.</h2>
+        <p class="small">
+          Responda individualmente, com honestidade e respeito. Pense nas
+          atitudes durante os projetos deste semestre.
+        </p>
+        <div class="intro-bottom">
+          <span class="outline-icon" aria-hidden="true">↗</span
+          ><span>Aprender. Colaborar. Evoluir.</span>
         </div>
-        <div class="form-group">
-          <label for="leader-name">Nome do Líder</label>
-          <input type="text" id="leader-name" placeholder="Digite seu nome completo" autocomplete="name">
-          <span class="error-msg">Por favor, digite seu nome.</span>
+      </aside>
+      <div class="form-shell">
+        <nav aria-label="Etapas da avaliação">
+          <ol class="steps">
+            <li data-progress="1" aria-current="step">
+              <span>01</span> Identificação
+            </li>
+            <li data-progress="2"><span>02</span> Colegas</li>
+            <li data-progress="3"><span>03</span> Revisão</li>
+          </ol>
+        </nav>
+        <div id="connection" class="connection" role="status">
+          Verificando disponibilidade do formulário…
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Unidade</label>
-            <div class="select-group" id="unit-group">
-              <button type="button" class="select-btn" data-value="Farol" data-group="unit">🏫 Farol</button>
-              <button type="button" class="select-btn" data-value="Jatiúca" data-group="unit">🏫 Jatiúca</button>
+        <form id="evaluation-form" novalidate>
+          <section data-step="1" class="panel">
+            <p class="eyebrow">VAMOS COMEÇAR</p>
+            <h2 tabindex="-1">Você e sua equipe</h2>
+            <p class="section-description">
+              Cada aluno preenche sua própria avaliação dos colegas.
+            </p>
+            <label class="field full"
+              >Seu nome completo<input
+                id="evaluator-name"
+                name="evaluator_name"
+                maxlength="160"
+                autocomplete="name"
+                placeholder="Como você se chama?"
+                required
+            /></label>
+            <div class="form-grid">
+              <fieldset>
+                <legend>Unidade</legend>
+                <div class="choices">
+                  <label
+                    ><input
+                      type="radio"
+                      name="unit"
+                      value="Farol"
+                      required
+                    /><span>Farol</span></label
+                  ><label
+                    ><input type="radio" name="unit" value="Jatiúca" /><span
+                      >Jatiúca</span
+                    ></label
+                  >
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend>Série</legend>
+                <div class="choices">
+                  <label
+                    ><input type="radio" name="grade" value="6" required /><span
+                      >6º ano</span
+                    ></label
+                  ><label
+                    ><input type="radio" name="grade" value="7" /><span
+                      >7º ano</span
+                    ></label
+                  >
+                </div>
+              </fieldset>
+              <label class="field"
+                >Turma<select id="class-select" name="class" required disabled>
+                  <option value="">Escolha unidade e série</option>
+                </select></label
+              >
+              <label class="field"
+                >Grupo<select id="group-select" name="group_number" required>
+                  <option value="">Selecione seu grupo</option>
+                  <option value="1">Grupo 1</option>
+                  <option value="2">Grupo 2</option>
+                  <option value="3">Grupo 3</option>
+                  <option value="4">Grupo 4</option>
+                  <option value="5">Grupo 5</option>
+                  <option value="6">Grupo 6</option>
+                </select></label
+              >
             </div>
-            <span class="error-msg">Selecione a unidade.</span>
-          </div>
-          <div class="form-group">
-            <label>Série</label>
-            <div class="select-group" id="grade-group">
-              <button type="button" class="select-btn" data-value="6" data-group="grade">6º Ano</button>
-              <button type="button" class="select-btn" data-value="7" data-group="grade">7º Ano</button>
+            <div class="notice">
+              <span aria-hidden="true">i</span>
+              <p>
+                Avalie todos os outros integrantes do seu grupo. Seu próprio
+                nome não entra na lista.
+              </p>
             </div>
-            <span class="error-msg">Selecione a série.</span>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="class-select">Turma</label>
-            <select id="class-select" disabled>
-              <option value="">Selecione unidade e série</option>
-            </select>
-            <span class="error-msg">Selecione a turma.</span>
-          </div>
-          <div class="form-group">
-            <label for="group-select">Grupo</label>
-            <select id="group-select">
-              <option value="">Selecione</option>
-              <option value="1">Grupo 1</option>
-              <option value="2">Grupo 2</option>
-              <option value="3">Grupo 3</option>
-              <option value="4">Grupo 4</option>
-              <option value="5">Grupo 5</option>
-              <option value="6">Grupo 6</option>
-            </select>
-            <span class="error-msg">Selecione o grupo.</span>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary" id="btn-next-1">Continuar →</button>
+            <div class="actions">
+              <span class="step-caption">Etapa 1 de 3</span
+              ><button class="primary" type="button" id="next-1">
+                Avaliar meus colegas <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </section>
+          <section data-step="2" class="panel" hidden>
+            <p class="eyebrow">CADA CONTRIBUIÇÃO CONTA</p>
+            <h2 tabindex="-1">Avalie seus colegas</h2>
+            <p class="section-description">
+              Adicione os outros integrantes e escolha uma nota para cada
+              critério.
+            </p>
+            <div class="scale">
+              <strong>Como usar a escala</strong>
+              <div>
+                <span><b>1</b> Nunca</span><span><b>2</b> Raramente</span
+                ><span><b>3</b> Às vezes</span
+                ><span><b>4</b> Frequentemente</span
+                ><span><b>5</b> Sempre</span>
+              </div>
+            </div>
+            <div id="members"></div>
+            <button type="button" class="add-member" id="add-member">
+              + Adicionar colega
+            </button>
+            <div class="actions">
+              <button class="secondary" type="button" data-back="1">
+                ← Voltar</button
+              ><button class="primary" type="button" id="next-2">
+                Revisar respostas →
+              </button>
+            </div>
+          </section>
+          <section data-step="3" class="panel" hidden>
+            <p class="eyebrow">QUASE LÁ</p>
+            <h2 tabindex="-1">Tudo certo para enviar?</h2>
+            <p class="section-description">
+              Confira sua identificação e os colegas que você avaliou.
+            </p>
+            <div id="review"></div>
+            <div class="notice">
+              <span aria-hidden="true">i</span>
+              <p>
+                As respostas serão encaminhadas ao professor para acompanhar o
+                trabalho das equipes.
+              </p>
+            </div>
+            <div class="actions">
+              <button class="secondary" type="button" data-back="2">
+                ← Editar respostas</button
+              ><button class="primary" type="submit" id="submit">
+                Enviar avaliação →
+              </button>
+            </div>
+          </section>
+          <section data-step="4" class="panel done" hidden>
+            <div class="success-icon" aria-hidden="true">✓</div>
+            <p class="eyebrow">OBRIGADO POR PARTICIPAR</p>
+            <h2 tabindex="-1">Sua avaliação foi registrada!</h2>
+            <p>
+              Sua contribuição ajuda a equipe a crescer e o professor a
+              acompanhar cada aluno.
+            </p>
+            <p class="receipt" id="receipt"></p>
+            <button class="primary" type="button" id="restart">
+              Iniciar outra avaliação
+            </button>
+          </section>
+        </form>
+        <p id="form-error" class="error-message" role="alert" hidden></p>
+        <footer class="form-footer">
+          <span>Colégio Contato · STEM</span
+          ><span>Juntos, vamos mais longe.</span>
+        </footer>
       </div>
-    </div>
-
-    <!-- ========== STEP 2: Member Evaluations ========== -->
-    <div class="form-step" id="step-2">
-      <div class="card">
-        <div class="card-header">
-          <span class="emoji">⭐</span>
-          <h1>Avaliação dos Integrantes</h1>
-          <p class="subtitle">Avalie cada colega do seu grupo clicando nas estrelas</p>
-        </div>
-        <div id="members-container"></div>
-        <button type="button" class="btn-add" id="btn-add-member">
-          ＋ Adicionar Integrante
-        </button>
-        <div style="margin-top:20px">
-          <button type="button" class="btn btn-primary" id="btn-next-2">Finalizar Avaliação →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========== STEP 3: Transition ========== -->
-    <div class="form-step" id="step-3">
-      <div class="card">
-        <div class="transition-screen">
-          <span class="emoji">🤝</span>
-          <h1>Agora é a vez da sua equipe!</h1>
-          <p>Passe o formulário para seus colegas responderem! Eles vão avaliar o desempenho do líder em conjunto.</p>
-          <button type="button" class="btn btn-primary" id="btn-next-3" style="max-width:320px;margin:0 auto">Continuar → Avaliação do Líder</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========== STEP 4: Leader Evaluation ========== -->
-    <div class="form-step" id="step-4">
-      <div class="card">
-        <div class="card-header">
-          <span class="emoji">👑</span>
-          <h1>Avaliação do Líder</h1>
-          <p class="subtitle">Avaliação feita pela equipe em conjunto</p>
-        </div>
-        <div class="leader-eval-header">
-          <span style="font-size:1.5rem">👤</span>
-          <div class="leader-name" id="leader-name-display"></div>
-          <p style="font-size:.8rem;margin-top:4px">Líder do grupo</p>
-        </div>
-        <div id="leader-eval-form"></div>
-        <button type="button" class="btn btn-success" id="btn-submit">Enviar Avaliação ✓</button>
-      </div>
-    </div>
-
-    <!-- ========== STEP 5: Complete ========== -->
-    <div class="form-step" id="step-5">
-      <div class="card">
-        <div class="completion-screen">
-          <div class="checkmark-circle">✓</div>
-          <h1>Avaliação Concluída!</h1>
-          <p style="margin-bottom:24px">Obrigado! Todas as avaliações foram salvas com sucesso.</p>
-          <button type="button" class="btn btn-primary" onclick="location.reload()" style="max-width:280px;margin:0 auto">Nova Avaliação</button>
-          <div style="margin-top:16px">
-            <a href="/dashboard.html" style="color:var(--text-dim);font-size:.8rem">Área do Professor →</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
-
-  <!-- Loading -->
-  <div class="loading-overlay hidden" id="loading">
-    <div class="spinner"></div>
-  </div>
-
-  <script src="/js/app.js"></script>
-</body>
+    </main>
+  </body>
 </html>
