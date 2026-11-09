@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const SCHOOL_CONFIG = require("../public/js/school-config");
 const TABLE = "stem_peer_submissions";
 const CRITERIA = [
   "responsabilidade",
@@ -22,17 +23,28 @@ const normalize = (value) =>
     .toLowerCase();
 const text = (value, max) =>
   typeof value === "string" && value.trim().length > 0 && value.length <= max;
-function validate(body) {
-  if (!body || !text(body.evaluator_name, 160))
+function validate(
+  body,
+  {
+    requireNames = true,
+    config = SCHOOL_CONFIG,
+    enforceGroupLimit = true,
+  } = {},
+) {
+  if (!body) return "Avaliação inválida.";
+  if (requireNames && !text(body.evaluator_name, 160))
     return "Informe seu nome completo.";
   if (!CLASS_MAP[`${body.unit}-${body.grade}`]?.includes(body.class))
     return "Selecione uma unidade, série e turma válidas.";
   if (
     !Number.isInteger(body.group_number) ||
     body.group_number < 1 ||
-    body.group_number > 6
+    body.group_number >
+      (enforceGroupLimit
+        ? config[body.unit]?.[body.grade]?.[body.class]?.groups || 0
+        : 99)
   )
-    return "Selecione um grupo de 1 a 6.";
+    return "Selecione um grupo válido para esta turma.";
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       body.id || "",
@@ -45,12 +57,12 @@ function validate(body) {
     body.members.length > 15
   )
     return "Adicione de 1 a 15 colegas.";
-  const names = new Set([normalize(body.evaluator_name)]);
+  const names = new Set(requireNames ? [normalize(body.evaluator_name)] : []);
   for (const member of body.members) {
-    if (!member || !text(member.member_name, 160))
+    if (!member || (requireNames && !text(member.member_name, 160)))
       return "Informe o nome de cada colega.";
-    const name = normalize(member.member_name);
-    if (names.has(name))
+    const name = requireNames ? normalize(member.member_name) : "";
+    if (requireNames && names.has(name))
       return "Cada colega deve aparecer uma única vez. Não inclua seu próprio nome.";
     names.add(name);
     for (const key of CRITERIA) {
@@ -69,6 +81,9 @@ function validate(body) {
 function clean(body) {
   return {
     id: body.id,
+    ...(body.roster_id
+      ? { roster_id: body.roster_id, evaluator_id: body.evaluator_id }
+      : {}),
     evaluator_name: body.evaluator_name.trim(),
     unit: body.unit,
     grade: body.grade,
@@ -79,6 +94,7 @@ function clean(body) {
     members: body.members.map((m) =>
       Object.fromEntries([
         ["member_name", m.member_name.trim()],
+        ...(m.member_id ? [["member_id", m.member_id]] : []),
         ...CRITERIA.flatMap((k) => [
           [k, m[k]],
           [`${k}_obs`, (m[`${k}_obs`] || "").trim()],
@@ -90,11 +106,9 @@ function clean(body) {
 function authorize(req, res) {
   const password = process.env.ADMIN_PASSWORD;
   if (!password) {
-    res
-      .status(503)
-      .json({
-        error: "O acesso do professor ainda não foi configurado no servidor.",
-      });
+    res.status(503).json({
+      error: "O acesso do professor ainda não foi configurado no servidor.",
+    });
     return false;
   }
   const hash = (value) => crypto.createHash("sha256").update(value).digest();
@@ -115,14 +129,12 @@ function fail(res, error) {
     "STEM storage failure:",
     error.code || error.status || error.name || "unknown",
   );
-  return res
-    .status(error.status === 503 ? 503 : 502)
-    .json({
-      error:
-        error.status === 503
-          ? error.message
-          : "Não foi possível acessar o banco de avaliações. Suas respostas continuam nesta página; tente novamente.",
-    });
+  return res.status(error.status === 503 ? 503 : 502).json({
+    error:
+      error.status === 503
+        ? error.message
+        : "Não foi possível acessar o banco de avaliações. Suas respostas continuam nesta página; tente novamente.",
+  });
 }
 module.exports = {
   TABLE,

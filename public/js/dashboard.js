@@ -25,6 +25,7 @@ let password = "",
   rows = [],
   visible = [],
   loading = false;
+let schoolConfig = window.SCHOOL_CONFIG;
 const mean = (values) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 const score = (value) =>
@@ -45,13 +46,26 @@ async function load() {
   $("#load-status").textContent = "Carregando avaliações…";
   $("#login-button").disabled = true;
   try {
-    const res = await fetch("/api/evaluations?semester=2", {
+    const [res, settingsRes] = await Promise.all([
+      fetch("/api/evaluations?semester=2", {
         headers: { Authorization: `Bearer ${password}` },
         signal: AbortSignal.timeout(20000),
       }),
-      data = await res.json();
+      fetch("/api/settings", { signal: AbortSignal.timeout(20000) }),
+    ]);
+    const [data, settings] = await Promise.all([
+      res.json(),
+      settingsRes.json(),
+    ]);
     if (!res.ok)
       throw new Error(data.error || "Não foi possível carregar as avaliações.");
+    if (!settingsRes.ok)
+      throw new Error(
+        settings.error ||
+          "Não foi possível carregar a configuração das turmas.",
+      );
+    schoolConfig = settings.config;
+    renderSettings();
     rows = data;
     $("#login").hidden = true;
     $("#dashboard").hidden = false;
@@ -82,6 +96,7 @@ async function load() {
   }
 }
 function render() {
+  updateGroupOptions();
   const filters = [
     ["f-year", "academic_year"],
     ["f-unit", "unit"],
@@ -124,7 +139,7 @@ function render() {
     g.values.push(...r.members.flatMap(ratings));
     groups.set(label, g);
     r.members.forEach((m) => {
-      const key = JSON.stringify([label, normal(m.member_name)]),
+      const key = JSON.stringify([label, m.member_id || normal(m.member_name)]),
         s = students.get(key) || {
           name: m.member_name,
           label,
@@ -244,4 +259,94 @@ $("#logout").addEventListener("click", () => {
     "criteria-bars",
   ].forEach((id) => ($("#" + id).innerHTML = ""));
   $("#password").focus();
+});
+function renderSettings() {
+  const items = [];
+  for (const [unit, grades] of Object.entries(schoolConfig))
+    for (const [grade, classes] of Object.entries(grades))
+      for (const [cls, info] of Object.entries(classes))
+        items.push({ unit, grade, class: cls, ...info });
+  $("#settings-rows").innerHTML = items
+    .map(
+      (item) =>
+        `<tr><td>${esc(item.unit)}</td><td>${item.grade}º ano</td><td>${item.class} — ${item.shift}</td><td><input type="number" min="1" max="99" step="1" value="${item.groups}" aria-label="Quantidade de grupos: ${item.unit}, ${item.grade}º ${item.class}" style="width:76px;padding:8px;border:1px solid #d5d5df;border-radius:6px"></td><td><button type="button" class="secondary" data-save-limit data-unit="${esc(item.unit)}" data-grade="${item.grade}" data-class="${item.class}">Salvar</button></td></tr>`,
+    )
+    .join("");
+}
+function updateGroupOptions() {
+  const unit = $("#f-unit").value,
+    grade = $("#f-grade").value,
+    cls = $("#f-class").value,
+    current = $("#f-group").value;
+  const counts = [];
+  for (const [u, grades] of Object.entries(schoolConfig))
+    for (const [g, classes] of Object.entries(grades))
+      for (const [c, info] of Object.entries(classes))
+        if (
+          (!unit || unit === u) &&
+          (!grade || grade === g) &&
+          (!cls || cls === c)
+        )
+          counts.push(info.groups);
+  for (const row of rows)
+    if (
+      (!unit || row.unit === unit) &&
+      (!grade || row.grade === grade) &&
+      (!cls || row.class === cls)
+    )
+      counts.push(row.group_number);
+  const maximum = Math.max(0, ...counts);
+  $("#f-group").innerHTML =
+    '<option value="">Todos</option>' +
+    Array.from(
+      { length: maximum },
+      (_, index) => `<option value="${index + 1}">${index + 1}</option>`,
+    ).join("");
+  $("#f-group").value = Number(current) <= maximum ? current : "";
+}
+$("#settings-rows").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-save-limit]");
+  if (!button || button.disabled) return;
+  const input = button.closest("tr").querySelector("input"),
+    groups = Number(input.value);
+  if (!Number.isInteger(groups) || groups < 1 || groups > 99) {
+    $("#settings-message").textContent =
+      "Informe uma quantidade de 1 a 99 grupos.";
+    input.focus();
+    return;
+  }
+  const payload = {
+    unit: button.dataset.unit,
+    grade: button.dataset.grade,
+    class: button.dataset.class,
+    groups,
+  };
+  button.disabled = true;
+  $("#settings-message").textContent = "Salvando…";
+  try {
+    const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${password}`,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20000),
+      }),
+      data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Não foi possível salvar.");
+    schoolConfig = data.config;
+    input.value =
+      schoolConfig[payload.unit][payload.grade][payload.class].groups;
+    $("#settings-message").textContent =
+      `${payload.unit} · ${payload.grade}º ${payload.class}: ${groups} grupos. Configuração salva.`;
+    render();
+  } catch (error) {
+    $("#settings-message").textContent =
+      error.name === "TimeoutError"
+        ? "A resposta demorou. Atualize o painel para conferir se a alteração foi salva."
+        : error.message;
+  } finally {
+    button.disabled = false;
+  }
 });

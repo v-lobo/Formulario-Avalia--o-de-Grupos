@@ -1,40 +1,59 @@
 # Avaliação de equipes · STEM · Colégio Contato
 
-Formulário individual para o segundo semestre: cada aluno identifica sua equipe e avalia os outros integrantes nos mesmos cinco critérios (notas de 1 a 5 e observações opcionais).
+Publicado em https://formulario-avaliacao-de-grupos.vercel.app/.
+
+## Fluxo dos alunos
+
+1. Escolher unidade, série, turma (com turno) e grupo, em telas sequenciais.
+2. Quando o grupo ainda não tem cadastro, informar os nomes de todos os integrantes. A tela começa com dois campos e permite adicionar mais, até 16 integrantes. Nomes vazios ou repetidos são rejeitados.
+3. Depois de salvar o cadastro, voltar automaticamente à seleção da unidade.
+4. Ao selecionar um grupo cadastrado, escolher o próprio nome na lista de integrantes.
+5. Avaliar cada um dos outros integrantes, um por vez, nos cinco critérios de 1 a 5, com observações opcionais. O próprio aluno é excluído automaticamente.
+6. Revisar e enviar. O servidor usa os nomes do cadastro e exige exatamente os outros integrantes do grupo.
+
+A lista é cadastrada uma única vez por unidade, série, turma, grupo, ano e semestre. Cadastros concorrentes não sobrescrevem a lista existente. O nome é escolhido pelo aluno; esse fluxo não é autenticação individual.
+
+## Painel do professor
+
+Acesso em `/dashboard.html`, com `ADMIN_PASSWORD` validada no servidor. Oferece filtros, médias por critério, equipe e aluno, observações e CSV em UTF-8.
+
+Em **Configurar quantidade de grupos por turma**, o professor pode aumentar ou diminuir os limites (1 a 99), com efeito na seleção dos alunos. O limite não pode ficar abaixo do maior grupo que já possui integrantes cadastrados. O cadastro de integrantes e a alteração do limite bloqueiam a mesma configuração de turma no banco, evitando corridas entre as operações.
+
+Os valores iniciais e os turnos estão em `public/js/school-config.js`, compartilhado pelo navegador e pelo servidor. Alterações do professor são persistidas em `stem_class_settings`; o arquivo contém apenas os valores iniciais.
 
 ## Executar localmente
 
-Requer Node.js 22 ou superior.
+Requer Node.js 22 ou superior (verificado com 24).
 
 1. `npm ci`
-2. Copie `.env.example` para `.env` e configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e `ADMIN_PASSWORD`. A chave legada `SUPABASE_SERVICE_ROLE_KEY` também é aceita. As chaves ficam apenas no servidor.
+2. Copiar `.env.example` para `.env` e configurar `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e `ADMIN_PASSWORD`. A chave legada `SUPABASE_SERVICE_ROLE_KEY` também é aceita.
 3. `npm start`
-4. Abra http://localhost:4183. O painel fica em `/dashboard.html`.
+4. Abrir http://localhost:4183.
 
-O projeto Supabase escolhido é `contato-atividades` (`vbaedyhqmrmaovnerloo`). A tabela `public.stem_peer_submissions` foi criada em 09/11/2026. `supabase-peer-schema.sql` documenta a estrutura reproduzível. As tabelas e os esquemas de outros aplicativos foram preservados. As avaliações antigas não são transferidas automaticamente.
+O projeto Supabase é `contato-atividades` (`vbaedyhqmrmaovnerloo`). Em um banco novo, aplicar `supabase-peer-schema.sql` e depois `supabase-roster-schema.sql`.
 
-## Publicar na Vercel
+- `stem_class_settings`: limites por turma e período.
+- `stem_group_rosters`: integrantes com identificadores estáveis, em um cadastro único por grupo e período.
+- `stem_peer_submissions`: avaliações individuais, com referência ao cadastro, avaliador e colegas avaliados.
 
-Mantenha o projeto Vercel associado a este repositório. Configure as mesmas variáveis do `.env.example` no servidor da Vercel. A pasta pública é `public`, com funções em `api`. Node.js 24 é a versão local verificada. O endereço em produção depende do projeto Vercel selecionado. Não publique o `.env`.
+As alterações mantêm as avaliações anteriores. Registros antigos sem cadastro vinculado continuam legíveis no painel. Os esquemas de outros aplicativos não são alterados.
 
-O formulário só mostra o comprovante depois que o banco confirma a gravação. Uma tentativa repetida com o mesmo UUID não duplica o registro. O conjunto de colegas é salvo em uma única operação, sem sessões incompletas por gravações separadas.
+RLS habilitada e acesso direto negado a `anon` e `authenticated`. O servidor usa Secret/service_role. As funções de cadastro e configuração usam `SECURITY INVOKER`, com execução restrita a `service_role`. A ausência de políticas para os clientes é intencional neste modelo ([documentação](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)).
 
-As APIs antigas de liderança retornam 410. Os dados históricos do banco antigo não são apagados nem reescritos. A chave antiga gravada no histórico Git precisa ser revogada na conta de origem, caso o projeto volte a ficar disponível.
+`ACADEMIC_YEAR` define o ano letivo (padrão 2026); o semestre é 2. Novos períodos recebem os valores iniciais de configuração e cadastros independentes.
 
-## Acesso e período
+## Publicação
 
-- Alunos enviam avaliações pelo servidor; não têm acesso de leitura ao banco.
-- O painel valida `ADMIN_PASSWORD` no backend. A senha fica somente em memória durante a sessão do painel.
-- RLS habilitada, sem permissões para `anon` e `authenticated`; o servidor usa a chave Secret/service_role.
-- Ano letivo configurável por `ACADEMIC_YEAR` (padrão 2026); semestre fixado em 2 no servidor.
-- O painel oferece filtros, médias por critério, equipe e aluno, observações e CSV em UTF-8.
-- A identificação usa nomes digitados pelos alunos. Sem lista oficial de integrantes ou autenticação individual, o sistema não garante identidade nem que todos os colegas foram incluídos. A instrução é avaliar todos os demais; nomes duplicados e o próprio nome são rejeitados.
-- Respostas ficam na página durante falhas de envio. Não há armazenamento permanente de rascunhos no navegador.
+Projeto Vercel: `formulario-avaliacao-de-grupos`, equipe `victors-projects-e6ab6573`. Pasta pública `public`, funções `api`, variáveis somente no servidor. `.env`, `.env.local` e artefatos de teste são ignorados no Git e na publicação.
+
+O comprovante aparece após confirmação do banco. O envio inteiro é gravado em uma operação. Repetir o mesmo UUID não duplica uma avaliação. Rascunhos permanecem apenas na página durante erros e não são armazenados permanentemente no navegador.
 
 ## Verificação
 
-`npm test` verifica validação, acesso do professor, gravação única, repetição idempotente e falhas do armazenamento. Os testes de API usam um servidor local simulado. O teste SQL no Supabase real foi executado com `ROLLBACK` e deixou zero registros de teste. A conferência visual usa o navegador local; o teste completo navegador → API → Supabase foi concluído, incluindo leitura no painel e exportação CSV, usando dados fictícios depois removidos.
+`npm test` cobre limites e turnos iniciais, cadastro, nomes repetidos, lista completa de colegas, exclusão do avaliador, nomes canônicos, configuração pelo professor, permissões, repetição de envio e falhas do banco.
 
-## Identidade visual
+Verificação no navegador e no Supabase real: cadastro de três integrantes, retorno à unidade, seleção pelo nome, avaliação dos dois colegas, alteração dos limites e bloqueio de redução abaixo de um grupo cadastrado. Dois cadastros simultâneos para um mesmo grupo retornaram 201 e 409, preservando uma única lista. Os registros fictícios são removidos após a conferência.
 
-Logo oficial e referências visuais de `v-lobo/prova-eletronica`: azul `#252544`, vermelho `#e3221b`, fundo `#f2f3f7`, cartões claros e cantos arredondados. Apenas a identidade visual foi reutilizada.
+## Visual
+
+Cartão central minimalista, logo oficial e cores do Contato, seguindo a prova eletrônica. A seleção em telas sequenciais segue a avaliação de professores.

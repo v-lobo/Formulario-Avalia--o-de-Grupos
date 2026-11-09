@@ -5,7 +5,7 @@ create table if not exists public.stem_peer_submissions (
   unit text not null check (unit in ('Farol', 'Jatiúca')),
   grade text not null check (grade in ('6', '7')),
   class text not null check (class in ('A', 'B', 'C', 'D', 'E')),
-  group_number integer not null check (group_number between 1 and 6),
+  group_number integer not null check (group_number between 1 and 99),
   academic_year integer not null,
   semester integer not null check (semester in (1, 2)),
   members jsonb not null check (jsonb_typeof(members) = 'array' and jsonb_array_length(members) between 1 and 15),

@@ -1,20 +1,58 @@
 const { getSupabase } = require("./_supabase");
 const { isDeepStrictEqual } = require("node:util");
 const { TABLE, validate, clean, authorize, fail } = require("./_shared");
+const {
+  ROSTERS,
+  validateContext,
+  validateSelection,
+  checkRosterEvaluation,
+  canonicalSubmission,
+} = require("./_groups");
+const { loadSettings } = require("./_settings");
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method === "POST") {
-    const message = validate(req.body);
+    const body = req.body;
+    const message =
+      validateContext(body) ||
+      validate(body, { requireNames: false, enforceGroupLimit: false });
     if (message) return res.status(400).json({ error: message });
+    const uuid = (value) =>
+      typeof value === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value,
+      );
+    if (!uuid(body.roster_id) || !uuid(body.evaluator_id))
+      return res
+        .status(400)
+        .json({ error: "Selecione seu nome no grupo cadastrado." });
     try {
-      const row = clean(req.body);
+      const config = await loadSettings(getSupabase());
+      const invalidSelection = validateSelection(body, config);
+      if (invalidSelection)
+        return res.status(400).json({ error: invalidSelection });
+      const { data: roster, error: rosterError } = await getSupabase()
+        .from(ROSTERS)
+        .select("*")
+        .eq("id", body.roster_id)
+        .maybeSingle();
+      if (rosterError) throw rosterError;
+      const rosterMessage = checkRosterEvaluation(body, roster);
+      if (rosterMessage) return res.status(400).json({ error: rosterMessage });
+      const canonical = canonicalSubmission(body, roster);
+      const canonicalError = validate(canonical, { config });
+      if (canonicalError)
+        return res.status(400).json({ error: canonicalError });
+      const row = clean(canonical);
       const { error } = await getSupabase().from(TABLE).insert(row);
       if (error && error.code !== "23505") throw error;
       if (error) {
         const { data, error: readError } = await getSupabase()
           .from(TABLE)
           .select(
-            "evaluator_name,unit,grade,class,group_number,academic_year,semester,members",
+            Object.keys(row)
+              .filter((key) => key !== "id")
+              .join(","),
           )
           .eq("id", row.id)
           .single();
@@ -22,12 +60,10 @@ module.exports = async function handler(req, res) {
         const { id, ...expected } = row;
         const same = isDeepStrictEqual(data, expected);
         if (!same)
-          return res
-            .status(409)
-            .json({
-              error:
-                "Esse envio já foi registrado com outras respostas. Inicie uma nova avaliação.",
-            });
+          return res.status(409).json({
+            error:
+              "Esse envio já foi registrado com outras respostas. Inicie uma nova avaliação.",
+          });
       }
       return res.status(201).json({ id: row.id, saved: true });
     } catch (error) {

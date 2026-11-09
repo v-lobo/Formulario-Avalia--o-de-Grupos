@@ -6,9 +6,10 @@
     <title>Avaliação de equipes · STEM | Colégio Contato</title>
     <meta
       name="description"
-      content="Avaliação dos colegas de equipe de STEM, segundo semestre, Colégio Contato."
+      content="Cadastro e avaliação dos integrantes das equipes de STEM do Colégio Contato."
     />
     <link rel="stylesheet" href="/css/form.css" />
+    <script src="/js/school-config.js" defer></script>
     <script src="/js/app.js" defer></script>
   </head>
   <body>
@@ -20,115 +21,14 @@
           width="210"
         />
         <h1>Avaliação de equipes</h1>
-        <p>STEM · <span data-period>2º semestre · 2026</span></p>
+        <p>STEM · <span id="period">2º semestre · 2026</span></p>
       </header>
-      <nav aria-label="Etapas da avaliação">
-        <ol class="steps">
-          <li data-progress="1" aria-current="step">
-            <span>1</span> Identificação
-          </li>
-          <li data-progress="2"><span>2</span> Colegas</li>
-          <li data-progress="3"><span>3</span> Revisão</li>
-        </ol>
-      </nav>
-      <div id="connection" class="connection" role="status">
-        Verificando disponibilidade…
-      </div>
-      <form id="evaluation-form" novalidate>
-        <section data-step="1" class="panel">
-          <h2 class="sr-only" tabindex="-1">Identificação</h2>
-          <label class="field"
-            >Seu nome completo
-            <input
-              id="evaluator-name"
-              name="evaluator_name"
-              maxlength="160"
-              autocomplete="name"
-              placeholder="Digite seu nome completo"
-              required
-            />
-          </label>
-          <div class="form-grid">
-            <label class="field"
-              >Unidade
-              <select name="unit" id="unit-select" required>
-                <option value="">Selecione</option>
-                <option>Farol</option>
-                <option>Jatiúca</option>
-              </select>
-            </label>
-            <label class="field"
-              >Série
-              <select name="grade" id="grade-select" required>
-                <option value="">Selecione</option>
-                <option value="6">6º ano</option>
-                <option value="7">7º ano</option>
-              </select>
-            </label>
-            <label class="field"
-              >Turma
-              <select id="class-select" name="class" required disabled>
-                <option value="">Escolha unidade e série</option>
-              </select>
-            </label>
-            <label class="field"
-              >Grupo
-              <select id="group-select" name="group_number" required>
-                <option value="">Selecione</option>
-                <option value="1">Grupo 1</option>
-                <option value="2">Grupo 2</option>
-                <option value="3">Grupo 3</option>
-                <option value="4">Grupo 4</option>
-                <option value="5">Grupo 5</option>
-                <option value="6">Grupo 6</option>
-              </select>
-            </label>
-          </div>
-          <div class="actions">
-            <button class="primary" type="button" id="next-1">Continuar</button>
-          </div>
-        </section>
-        <section data-step="2" class="panel" hidden>
-          <h2 tabindex="-1">Avaliação dos colegas</h2>
-          <p class="section-description">
-            Avalie todos os colegas do seu grupo, exceto você.
-          </p>
-          <div class="scale">
-            <strong>Notas de 1 a 5</strong>
-            <p>
-              1 Nunca · 2 Raramente · 3 Às vezes<br />4 Frequentemente · 5
-              Sempre
-            </p>
-          </div>
-          <div id="members"></div>
-          <button type="button" class="add-member" id="add-member">
-            + Adicionar colega
-          </button>
-          <div class="actions">
-            <button class="secondary" type="button" data-back="1">Voltar</button
-            ><button class="primary" type="button" id="next-2">Revisar</button>
-          </div>
-        </section>
-        <section data-step="3" class="panel" hidden>
-          <h2 tabindex="-1">Confira suas respostas</h2>
-          <div id="review"></div>
-          <div class="actions">
-            <button class="secondary" type="button" data-back="2">Editar</button
-            ><button class="primary" type="submit" id="submit">
-              Enviar avaliação
-            </button>
-          </div>
-        </section>
-        <section data-step="4" class="panel done" hidden>
-          <div class="success-icon" aria-hidden="true">✓</div>
-          <h2 tabindex="-1">Avaliação registrada</h2>
-          <p>Suas respostas foram enviadas ao professor.</p>
-          <p class="receipt" id="receipt"></p>
-          <button class="primary" type="button" id="restart">
-            Nova avaliação
-          </button>
-        </section>
+      <p id="selection-context" class="selection-context" hidden></p>
+      <p id="flow-notice" class="flow-notice" role="status" hidden></p>
+      <form id="flow-form" novalidate>
+        <section id="screen" class="flow-screen" aria-live="polite"></section>
       </form>
+      <p id="busy-status" class="section-description" role="status" hidden></p>
       <p id="form-error" class="error-message" role="alert" hidden></p>
       <footer><a href="/dashboard.html">Área do professor</a></footer>
     </main>
