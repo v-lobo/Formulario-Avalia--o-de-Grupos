@@ -121,6 +121,7 @@ function show(view) {
   $("#screen h2")?.focus();
 }
 function render() {
+  $("#teacher-entry").hidden = state.view !== "unit";
   $("#selection-context").textContent = contextLabel();
   $("#selection-context").hidden = !state.unit;
   let content = "";
