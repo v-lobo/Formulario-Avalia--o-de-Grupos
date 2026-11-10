@@ -182,9 +182,13 @@ footer a:hover {
   color: var(--navy);
 }
 #teacher-entry {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 10;
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin: 0;
 }
 .teacher-access {
   display: inline-flex;
@@ -379,7 +383,7 @@ textarea {
 }
 @media (max-width: 560px) {
   body {
-    padding: 20px 12px;
+    padding: 56px 12px;
   }
   .form-card {
     padding: 24px 20px;

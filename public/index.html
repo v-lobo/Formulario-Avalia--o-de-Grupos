@@ -13,6 +13,30 @@
     <script src="/js/app.js" defer></script>
   </head>
   <body>
+    <nav id="teacher-entry" aria-label="Acesso do professor">
+      <a
+        class="teacher-access"
+        href="/dashboard.html"
+        aria-label="Área do professor"
+        title="Área do professor"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="5" y="10" width="14" height="11" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          <path d="M12 14v3" />
+        </svg>
+      </a>
+    </nav>
     <main class="form-card">
       <header class="form-header">
         <img
@@ -30,30 +54,6 @@
       </form>
       <p id="busy-status" class="section-description" role="status" hidden></p>
       <p id="form-error" class="error-message" role="alert" hidden></p>
-      <footer id="teacher-entry">
-        <a
-          class="teacher-access"
-          href="/dashboard.html"
-          aria-label="Área do professor"
-          title="Área do professor"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="5" y="10" width="14" height="11" rx="2" />
-            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-            <path d="M12 14v3" />
-          </svg>
-        </a>
-      </footer>
     </main>
   </body>
 </html>
