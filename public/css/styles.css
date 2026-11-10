@@ -839,3 +839,13 @@ td small {
   font-size: 12px;
   color: #686879;
 }
+.login-logo { display: block; width: 210px; height: auto; margin: 0 auto 18px; }
+body:has(#login:not([hidden])) .site-header { display: none; }
+body:has(#login:not([hidden])) .dash-main { padding: 48px 16px; }
+.login-card { max-width: 540px; margin: 0 auto; padding: 30px; border: 0; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.login-card h1 { text-align: center; font-size: 22px; margin: 0; }
+.login-card > p { text-align: center; }
+.login-card .field { margin-top: 24px; }
+.login-back { margin: 20px 0 0; font-size: 12px !important; }
+.login-back a { color: #92929b; }
+@media(max-width:560px) { body:has(#login:not([hidden])) .dash-main { padding: 56px 12px; } .login-card { padding: 24px 20px; } .login-logo { width: 190px; } }
