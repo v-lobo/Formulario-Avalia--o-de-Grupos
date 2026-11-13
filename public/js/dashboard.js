@@ -176,6 +176,8 @@ function render() {
         s = students.get(key) || {
           name: m.member_name,
           label,
+          classLabel: `${r.unit} · ${r.grade}º ${r.class}`,
+          groupNumber: r.group_number,
           received: 0,
           evaluations: [],
           values: [],
@@ -782,7 +784,7 @@ $("#student-rows").addEventListener("click", (event) => {
 });
 $("#student-dialog-close").addEventListener("click", () => $("#student-dialog").close());
 
-document.querySelectorAll('[data-student-export]').forEach(button => button.addEventListener('click', async () => {
+async function exportStudentReport(button, options = {}) {
   if (exportingStudents || !password || loading) return;
   const individual = button.hasAttribute('data-individual');
   const selected = individual ? [studentDetails.get(selectedStudentKey)].filter(Boolean) : [...studentDetails.values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
@@ -791,11 +793,11 @@ document.querySelectorAll('[data-student-export]').forEach(button => button.addE
   const version = sessionVersion;
   exportingStudents = true;
   document.querySelectorAll('[data-student-export]').forEach(b => { b.disabled = true; });
-  status.textContent = 'Preparando arquivo com as médias e os gráficos…';
+  status.textContent = options.summaryOnly ? 'Preparando resumo com as médias…' : 'Preparando arquivo com as médias e os gráficos…';
   const period = `${periodSelection.academic_year} · ${periodSelection.semester}º semestre`;
   const name = individual ? selected[0].name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '-').slice(0, 70) : 'alunos';
   try {
-    await StudentReports[button.dataset.studentExport](selected, period, `STEM-${name}-${periodSelection.academic_year}-${periodSelection.semester}`);
+    await StudentReports[button.dataset.studentExport](selected, period, `STEM-${name}-${periodSelection.academic_year}-${periodSelection.semester}${options.summaryOnly ? '-resumo' : ''}`, options);
     if (version === sessionVersion) status.textContent = 'Arquivo gerado. Confira os downloads do navegador.';
   } catch (err) {
     if (version === sessionVersion) status.textContent = err.message || 'Não foi possível exportar. Tente novamente.';
@@ -803,7 +805,25 @@ document.querySelectorAll('[data-student-export]').forEach(button => button.addE
     exportingStudents = false;
     document.querySelectorAll('[data-student-export]').forEach(b => { b.disabled = !studentDetails.size; });
   }
+}
+let pendingPdfButton = null;
+document.querySelectorAll('[data-student-export]').forEach(button => button.addEventListener('click', () => {
+  if (exportingStudents || !password || loading || !studentDetails.size) return;
+  if (button.dataset.studentExport !== 'pdf') return exportStudentReport(button);
+  pendingPdfButton = button;
+  $('#pdf-export-form').reset();
+  $('#pdf-export-dialog').showModal();
 }));
+$('#pdf-export-cancel').addEventListener('click', () => $('#pdf-export-dialog').close());
+$('#pdf-export-dialog').addEventListener('close', () => { pendingPdfButton = null; });
+$('#pdf-export-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const button = pendingPdfButton;
+  if (!button) return;
+  const summaryOnly = new FormData(event.currentTarget).get('pdf-mode') === 'summary';
+  $('#pdf-export-dialog').close();
+  exportStudentReport(button, { summaryOnly });
+});
 
 $("#participation-rows").addEventListener("click", (event) => {
   const button = event.target.closest("[data-participation-unit]");

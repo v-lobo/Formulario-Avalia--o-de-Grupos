@@ -434,6 +434,18 @@
       <h2>Observações recebidas</h2>
       <div id="student-dialog-notes"></div>
     </dialog>
+    <dialog id="pdf-export-dialog" aria-labelledby="pdf-export-title" aria-describedby="pdf-export-description">
+      <form id="pdf-export-form">
+        <h2 id="pdf-export-title">Exportar PDF</h2>
+        <p id="pdf-export-description" class="help-text">Escolha o conteúdo do arquivo para os alunos selecionados.</p>
+        <fieldset class="pdf-export-options">
+          <legend>Conteúdo do PDF</legend>
+          <label><input type="radio" name="pdf-mode" value="complete" checked><span><strong>Relatório completo</strong><small>Resumo com lista e médias, seguido da página de cada aluno com seu gráfico.</small></span></label>
+          <label><input type="radio" name="pdf-mode" value="summary"><span><strong>Somente resumo</strong><small>Lista de alunos por turma, em ordem alfabética, médias finais e média do recorte.</small></span></label>
+        </fieldset>
+        <div class="dialog-actions"><button id="pdf-export-cancel" type="button" class="secondary">Cancelar</button><button type="submit" class="primary">Exportar PDF</button></div>
+      </form>
+    </dialog>
     <dialog
       id="management-dialog"
       aria-labelledby="dialog-title"

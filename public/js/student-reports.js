@@ -26,6 +26,65 @@
     });
     return { ...student, categories, mean: average(categories.flatMap(c => student.evaluations.map(e => e[c.key]).filter(v => Number.isInteger(v) && v >= 1 && v <= 5))) };
   }
+  function summarizeSelection(students) {
+    const classes = new Map();
+    for (const student of students.map(summarize)) {
+      const classLabel = student.classLabel || student.label?.replace(/\s*·\s*G\d+\s*$/, '') || 'Turma não informada';
+      const groupNumber = student.groupNumber ?? student.label?.match(/·\s*G(\d+)\s*$/)?.[1] ?? '';
+      if (!classes.has(classLabel)) classes.set(classLabel, { label: classLabel, students: [] });
+      classes.get(classLabel).students.push({ ...student, classLabel, groupNumber });
+    }
+    const alphabetical = (a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base', numeric: true });
+    const groups = [...classes.values()].sort((a, b) => alphabetical(a.label, b.label));
+    groups.forEach(group => group.students.sort((a, b) => alphabetical(a.name, b.name) || alphabetical(String(a.groupNumber), String(b.groupNumber))));
+    const ordered = groups.flatMap(group => group.students);
+    return { classes: groups, students: ordered, mean: average(ordered.map(student => student.mean)) };
+  }
+  function summaryPages(doc, selection, period) {
+    function heading(continued) {
+      doc.setFillColor('#173c38'); doc.rect(0, 0, 210, 7, 'F');
+      doc.setTextColor('#173c38'); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+      doc.text('COLÉGIO CONTATO · STEM', 15, 18);
+      doc.setFontSize(19); doc.text(continued ? 'Resumo dos alunos · continuação' : 'Resumo dos alunos', 15, 29);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(period, 15, 39);
+      if (continued) return 51;
+      doc.setFillColor('#eef5f3'); doc.roundedRect(15, 46, 180, 22, 3, 3, 'F');
+      doc.setFontSize(10); doc.text('Média do recorte', 20, 54);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(19); doc.text(`${format(selection.mean)} / 5`, 20, 64);
+      doc.setFontSize(10);
+      doc.text(`${selection.students.length} ${selection.students.length === 1 ? 'aluno' : 'alunos'} · ${selection.classes.length} ${selection.classes.length === 1 ? 'turma' : 'turmas'}`, 190, 59, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor('#475569');
+      doc.text('Média das médias finais, com o mesmo peso para cada aluno.', 15, 77);
+      return 90;
+    }
+    let y = heading(false);
+    function classHeading(group, continued = false) {
+      doc.setFillColor('#eef5f3'); doc.rect(15, y - 5, 180, 9, 'F');
+      doc.setTextColor('#173c38'); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.text(group.label + (continued ? ' · continuação' : ''), 18, y + 1);
+      doc.setFontSize(9); doc.setTextColor('#475569');
+      doc.text('Aluno', 15, y + 12); doc.text('Grupo', 160, y + 12, { align: 'center' }); doc.text('Média final', 195, y + 12, { align: 'right' });
+      y += 18;
+    }
+    for (const group of selection.classes) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+      const firstHeight = Math.max(6, doc.splitTextToSize(group.students[0].name, 126).length * 4.2 + 1.8);
+      if (y + 18 + firstHeight > 270) { doc.addPage(); y = heading(true); }
+      classHeading(group);
+      for (const student of group.students) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        const lines = doc.splitTextToSize(student.name, 126);
+        const height = Math.max(6, lines.length * 4.2 + 1.8);
+        if (y + height > 270) { doc.addPage(); y = heading(true); classHeading(group, true); }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor('#173c38');
+        doc.text(lines, 15, y); doc.text(String(student.groupNumber || '—'), 160, y, { align: 'center' });
+        doc.setFont('helvetica', 'bold'); doc.text(format(student.mean), 195, y, { align: 'right' });
+        doc.setDrawColor('#e2e8e6'); doc.line(15, y + height - 3, 195, y + height - 3);
+        y += height;
+      }
+      y += 4;
+    }
+  }
   function chart(student) {
     const canvas = document.createElement('canvas');
     canvas.width = 1440; canvas.height = 680;
@@ -68,11 +127,14 @@
     const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  async function pdf(students, period, filename) {
+  async function pdf(students, period, filename, { summaryOnly = false } = {}) {
+    if (!students.length) throw new Error('Não há alunos avaliados para exportar.');
     await library('jspdf', '/js/vendor/jspdf.umd.min.js');
     const doc = new root.jspdf.jsPDF({ compress: true });
-    students.map(summarize).forEach((s, i) => {
-      if (i) doc.addPage();
+    const selection = summarizeSelection(students);
+    summaryPages(doc, selection, period);
+    if (!summaryOnly) selection.students.forEach((s) => {
+      doc.addPage();
       doc.setFillColor('#173c38'); doc.rect(0, 0, 210, 7, 'F');
       doc.setTextColor('#173c38'); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
       doc.text('COLÉGIO CONTATO · STEM', 15, 22);
@@ -89,8 +151,13 @@
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor('#475569');
       const note = 'A média final considera as notas recebidas nos cinco critérios. As barras mostram a proporção de cada nota por categoria; notas 4 e 5 indicam satisfação.';
       doc.text(doc.splitTextToSize(note, 180), 15, y + 133);
-      doc.setFontSize(9); doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} · Aluno ${i + 1} de ${students.length}`, 15, 282);
     });
+    const created = new Date().toLocaleString('pt-BR');
+    for (let page = 1; page <= doc.getNumberOfPages(); page++) {
+      doc.setPage(page); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor('#475569');
+      doc.text(`Gerado em ${created}`, 15, 282);
+      doc.text(`Página ${page} de ${doc.getNumberOfPages()}`, 195, 282, { align: 'right' });
+    }
     doc.save(filename + '.pdf');
   }
   async function excel(students, period, filename) {
@@ -128,7 +195,7 @@
     download(await workbook.xlsx.writeBuffer(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename + '.xlsx');
   }
   function styleHeader(row) { row.font = { bold: true, color: { argb: 'FFFFFFFF' } }; row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF173C38' } }; row.height = 32; row.alignment = { vertical: 'middle', wrapText: true }; }
-  const api = { summarize, pdf, excel };
+  const api = { summarize, summarizeSelection, pdf, excel };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.StudentReports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

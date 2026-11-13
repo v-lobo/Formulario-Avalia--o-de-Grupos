@@ -576,6 +576,16 @@ body:has(#login:not([hidden])) .dash-main {
 .student-detail-button { background:none; border:0; padding:4px 0; color:var(--navy); font:inherit; font-weight:800; text-align:left; text-decoration:underline; text-underline-offset:3px; }
 #student-dialog { width:min(960px, calc(100% - 32px)); max-height:85dvh; overflow:auto; padding:28px; border:0; border-radius:var(--radius); color:var(--ink); background:white; box-shadow:var(--shadow); }
 #student-dialog::backdrop { background:#16162b80; }
+#pdf-export-dialog { width:min(560px, calc(100% - 32px)); max-height:85dvh; overflow:auto; padding:24px; border:0; border-radius:var(--radius); color:var(--ink); background:white; box-shadow:var(--shadow); }
+#pdf-export-dialog::backdrop { background:#16162b80; }
+#pdf-export-dialog h2 { margin:0 0 12px; font-size:1.4rem; }
+.pdf-export-options { border:0; padding:0; margin:20px 0; }
+.pdf-export-options legend { font-weight:800; margin-bottom:10px; }
+.pdf-export-options label { display:flex; align-items:flex-start; gap:12px; padding:16px; margin:10px 0; border:1px solid #d9dce7; border-radius:12px; cursor:pointer; }
+.pdf-export-options label:has(input:checked) { border-color:var(--ink); background:#f2f4fa; }
+.pdf-export-options input { flex:none; margin:4px 0 0; accent-color:var(--ink); }
+.pdf-export-options strong, .pdf-export-options small { display:block; }
+.pdf-export-options small { margin-top:5px; color:var(--muted); line-height:1.5; }
 .student-dialog-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .student-final-average { margin:20px 0; padding:18px 22px; border-radius:var(--radius); background:#eef0f8; border-left:4px solid var(--navy); }
 .student-final-average > span { font-size:.9rem; font-weight:800; color:var(--muted); }
