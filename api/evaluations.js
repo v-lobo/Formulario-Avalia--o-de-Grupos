@@ -9,6 +9,7 @@ const {
   canonicalSubmission,
 } = require("./_groups");
 const { loadSettings } = require("./_settings");
+const { currentPeriod, checkOpen } = require("./_periods");
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method === "POST") {
@@ -27,7 +28,10 @@ module.exports = async function handler(req, res) {
         .status(400)
         .json({ error: "Selecione seu nome no grupo cadastrado." });
     try {
-      const config = await loadSettings(getSupabase());
+      const current = await currentPeriod(getSupabase());
+      const closed = checkOpen(current, body);
+      if (closed) return res.status(409).json({ error: closed });
+      const config = await loadSettings(getSupabase(), current);
       const invalidSelection = validateSelection(body, config);
       if (invalidSelection)
         return res.status(400).json({ error: invalidSelection });
@@ -37,14 +41,16 @@ module.exports = async function handler(req, res) {
         .eq("id", body.roster_id)
         .maybeSingle();
       if (rosterError) throw rosterError;
-      const rosterMessage = checkRosterEvaluation(body, roster);
+      const rosterMessage = checkRosterEvaluation(body, roster, current);
       if (rosterMessage) return res.status(400).json({ error: rosterMessage });
       const canonical = canonicalSubmission(body, roster);
       const canonicalError = validate(canonical, { config });
       if (canonicalError)
         return res.status(400).json({ error: canonicalError });
-      const row = clean(canonical);
+      const row = clean(canonical, current);
       const { error } = await getSupabase().from(TABLE).insert(row);
+      if (error?.code === "22023")
+        return res.status(409).json({ error: error.message });
       if (error && error.code !== "23505") throw error;
       if (error) {
         const { data, error: readError } = await getSupabase()
@@ -52,11 +58,19 @@ module.exports = async function handler(req, res) {
           .select(
             Object.keys(row)
               .filter((key) => key !== "id")
+              .concat("deleted_at")
               .join(","),
           )
           .eq("id", row.id)
           .single();
         if (readError) throw readError;
+        if (data.deleted_at)
+          return res
+            .status(409)
+            .json({
+              error: "Esta resposta foi movida para a lixeira pelo professor.",
+            });
+        delete data.deleted_at;
         const { id, ...expected } = row;
         const same = isDeepStrictEqual(data, expected);
         if (!same)
@@ -81,6 +95,7 @@ module.exports = async function handler(req, res) {
           .order("created_at", { ascending: false })
           .order("id")
           .range(offset, offset + 499);
+        query = query.is("deleted_at", null);
         for (const key of [
           "unit",
           "grade",

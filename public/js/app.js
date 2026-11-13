@@ -27,6 +27,7 @@ const CRITERIA = [
     "Trata colegas e professores com gentileza e respeito.",
   ],
 ];
+const RATING_LABELS = ["Muito Insatisfeito", "Insatisfeito", "Neutro", "Satisfeito", "Muito Satisfeito"];
 const esc = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -58,6 +59,9 @@ const state = {
   busy: false,
   id: null,
   dirty: false,
+  academic_year: null,
+  semester: null,
+  is_open: null,
 };
 function error(message, target) {
   $("#form-error").textContent = message;
@@ -65,10 +69,16 @@ function error(message, target) {
   if (target) target.focus();
   else $("#form-error").scrollIntoView({ behavior: "smooth", block: "center" });
 }
+let busyMessageTimer;
+let configLoadedAt = 0;
 function busy(value, message = "Carregando…") {
   state.busy = value;
-  $("#busy-status").hidden = !value;
+  clearTimeout(busyMessageTimer);
+  $("#busy-status").hidden = true;
   $("#busy-status").textContent = message;
+  if (value) busyMessageTimer = setTimeout(() => {
+    if (state.busy) $("#busy-status").hidden = false;
+  }, 350);
   $("#screen")
     .querySelectorAll("button")
     .forEach((button) => (button.disabled = value));
@@ -95,6 +105,8 @@ function context() {
     grade: state.grade,
     class: state.class,
     group_number: state.group_number,
+    academic_year: state.academic_year,
+    semester: state.semester,
   };
 }
 function contextLabel() {
@@ -112,12 +124,13 @@ function contextLabel() {
 const button = (label, action, value = "", className = "choice-button") =>
   `<button type="button" class="${className}" data-action="${action}" data-value="${esc(value)}">${esc(label)}</button>`;
 const actions = (nextLabel, action) =>
-  `<div class="actions">${button("Voltar", "back", "", "secondary")}${nextLabel ? button(nextLabel, action, "", "primary") : ""}</div>`;
+  `<div class="form-actions"><div class="actions">${button("Voltar", "back", "", "secondary")}${nextLabel ? button(nextLabel, action, "", action === "submit" ? "primary primary-gradient" : "primary") : ""}</div></div>`;
 function show(view) {
   state.view = view;
   $("#form-error").hidden = true;
   $("#flow-notice").hidden = true;
   render();
+  updateDraftStatus();
   $("#screen h2")?.focus();
 }
 function render() {
@@ -125,7 +138,12 @@ function render() {
   $("#selection-context").textContent = contextLabel();
   $("#selection-context").hidden = !state.unit;
   let content = "";
-  switch (state.view) {
+  const view =
+    state.is_open === false && state.view !== "done" ? "closed" : state.view;
+  switch (view) {
+    case "closed":
+      content = `<h2 tabindex="-1">Formulário fechado</h2><p class="section-description">O professor ainda não abriu este período ou já encerrou a coleta. Aguarde as orientações da turma.</p>${button("Verificar abertura", "check-open", "", "primary")}`;
+      break;
     case "unit":
       content = `<h2 tabindex="-1">Escolha sua unidade</h2><div class="choice-list">${["Farol", "Jatiúca"].map((unit) => button(unit, "unit", unit)).join("")}</div>`;
       break;
@@ -133,10 +151,10 @@ function render() {
       content = `<h2 tabindex="-1">Escolha sua série</h2><div class="choice-list">${["6", "7"].map((grade) => button(`${grade}º ano`, "grade", grade)).join("")}</div>${actions()}`;
       break;
     case "class":
-      content = `<h2 tabindex="-1">Escolha sua turma</h2><div class="choice-list">${Object.entries(
+      content = `<h2 tabindex="-1">Escolha sua turma</h2><div class="choice-list classes">${Object.entries(
         state.config[state.unit][state.grade],
       )
-        .map(([cls, info]) => button(`${cls} — ${info.shift}`, "class", cls))
+        .map(([cls, info]) => `<button type="button" class="choice-button" data-action="class" data-value="${esc(cls)}">${esc(cls)}<small>${esc(info.shift)}</small></button>`)
         .join("")}</div>${actions()}`;
       break;
     case "group": {
@@ -148,19 +166,19 @@ function render() {
       content = `<h2 tabindex="-1">Cadastre os integrantes</h2><p class="section-description">Este grupo ainda não foi cadastrado. Informe o nome completo de todos os integrantes, incluindo o seu.</p><div class="roster-fields">${state.names.map((name, index) => `<div class="roster-field"><label class="field">Integrante ${index + 1}<input data-roster-index="${index}" value="${esc(name)}" maxlength="160" placeholder="Nome completo" autocomplete="off" required></label>${state.names.length > 2 ? button("Remover", "remove-name", index, "remove") : ""}</div>`).join("")}</div>${state.names.length < 16 ? button("+ Adicionar integrante", "add-name", "", "add-member") : ""}<p class="register-hint">Após salvar, você voltará à seleção da unidade.</p>${actions("Salvar integrantes", "save-roster")}`;
       break;
     case "identify":
-      content = `<h2 tabindex="-1">Qual é o seu nome?</h2><div class="choice-list">${state.roster.members.map((member) => button(member.name, "evaluator", member.id)).join("")}</div>${actions()}`;
+      content = `<h2 tabindex="-1">Qual é o seu nome?</h2>${state.roster.members.every((member) => (state.roster.submitted_evaluator_ids || []).includes(member.id)) ? "<p>Todos os integrantes deste grupo já enviaram suas avaliações.</p>" : ""}<div class="choice-list names">${state.roster.members.filter((member) => !(state.roster.submitted_evaluator_ids || []).includes(member.id)).map((member) => button(member.name, "evaluator", member.id)).join("")}</div>${actions()}`;
       break;
     case "rate": {
       const peer = state.peers[state.peerIndex],
         values = state.ratings[peer.id];
-      content = `<p class="peer-progress">Colega ${state.peerIndex + 1} de ${state.peers.length}</p><h2 tabindex="-1">${esc(peer.name)}</h2><div class="scale"><strong>Como este colega participa do grupo?</strong><p>1 Nunca · 2 Raramente · 3 Às vezes<br>4 Frequentemente · 5 Sempre</p></div>${CRITERIA.map(([key, label, description]) => `<fieldset class="rating"><legend>${label}</legend><p>${description}</p><div class="scores">${[1, 2, 3, 4, 5].map((n) => `<label class="score"><input type="radio" data-rating="${key}" name="rating-${key}" value="${n}" aria-label="${n} — ${["Nunca", "Raramente", "Às vezes", "Frequentemente", "Sempre"][n - 1]}" ${values[key] === n ? "checked" : ""}><span>${n}</span></label>`).join("")}</div><details ${values[key + "_obs"] ? "open" : ""}><summary>Adicionar observação (opcional)</summary><textarea data-note="${key}" maxlength="1200" aria-label="Observação sobre ${label}">${esc(values[key + "_obs"] || "")}</textarea></details></fieldset>`).join("")}${actions(state.peerIndex + 1 < state.peers.length ? "Próximo colega" : "Revisar", "next-peer")}`;
+      content = `<p class="peer-progress">Colega ${state.peerIndex + 1} de ${state.peers.length}</p><div class="peer-progress-track" aria-hidden="true"><span style="width:${Math.round(state.peerIndex / state.peers.length * 100)}%"></span></div><h2 tabindex="-1">${esc(peer.name)}</h2><div class="scale"><strong>Qual é sua satisfação com a participação deste colega?</strong></div>${CRITERIA.map(([key, label, description]) => `<fieldset class="rating"><legend>${label}</legend><p>${description}</p><div class="scores">${[1, 2, 3, 4, 5].map((n) => `<label class="score"><input type="radio" data-rating="${key}" name="rating-${key}" value="${n}" aria-label="${n} — ${RATING_LABELS[n - 1]}" ${values[key] === n ? "checked" : ""}><span>${RATING_LABELS[n - 1]}</span></label>`).join("")}</div><details ${values[key + "_obs"] ? "open" : ""}><summary>Adicionar observação (opcional)</summary><textarea data-note="${key}" maxlength="1200" aria-label="Observação sobre ${label}">${esc(values[key + "_obs"] || "")}</textarea></details></fieldset>`).join("")}${actions(state.peerIndex + 1 < state.peers.length ? "Próximo colega" : "Revisar", "next-peer")}`;
       break;
     }
     case "review":
       content = `<h2 tabindex="-1">Confira sua avaliação</h2><p class="section-description">Você: <strong>${esc(state.evaluator.name)}</strong></p><h3>Colegas avaliados</h3>${state.peers.map((peer) => `<div class="review-row"><strong>${esc(peer.name)}</strong><span>5 critérios preenchidos</span></div>`).join("")}${actions("Enviar avaliação", "submit")}`;
       break;
     case "done":
-      content = `<div class="done"><div class="success-icon" aria-hidden="true">✓</div><h2 tabindex="-1">Avaliação registrada</h2><p>Suas respostas foram enviadas ao professor.</p><p class="receipt">Comprovante: ${esc(state.id)}</p>${button("Voltar ao início", "restart", "", "primary")}</div>`;
+      content = `<div class="done"><div class="success-icon" aria-hidden="true">✓</div><p class="thank-you">Obrigado, ${esc(state.evaluator.name)}!</p><h2 tabindex="-1">Avaliação registrada</h2><p>Suas respostas foram enviadas ao professor.</p><p class="receipt">Comprovante: ${esc(state.id)}</p><div class="completion-actions">${state.roster.members.some(member => !(state.roster.submitted_evaluator_ids || []).includes(member.id)) ? button("Próximo integrante", "next-evaluator", "", "secondary") : ""}${button("Voltar ao início", "restart", "", "primary")}</div></div>`;
       break;
   }
   $("#screen").innerHTML = content;
@@ -172,9 +190,18 @@ function render() {
 async function refreshConfig() {
   const data = await request("/api/settings");
   state.config = data.config;
-  $("#period").textContent = `2º semestre · ${data.academic_year}`;
+  configLoadedAt = Date.now();
+  state.academic_year = data.academic_year;
+  state.semester = data.semester;
+  state.is_open = data.is_open;
+  $("#period").textContent =
+    `${data.semester}º semestre · ${data.academic_year}`;
 }
 async function openGroups() {
+  if (configLoadedAt && Date.now() - configLoadedAt < 30000) {
+    show("group");
+    return;
+  }
   busy(true, "Carregando grupos…");
   try {
     await refreshConfig();
@@ -248,16 +275,86 @@ async function saveRoster() {
     busy(false);
   }
 }
-function chooseEvaluator(id) {
+let draftTimer;
+let draftQueue = Promise.resolve();
+let draftMessage = '';
+let draftFailed = false;
+const draftKey = (roster, evaluator) => `stem-draft:${roster}:${evaluator}`;
+function updateDraftStatus() {
+  const active = ['rate', 'review'].includes(state.view);
+  $('#draft-status').hidden = !active;
+  $('#draft-status').textContent = draftMessage || 'Suas respostas são salvas automaticamente. Para continuar depois, escolha seu nome neste grupo.';
+  $('#draft-retry').hidden = !active || !draftFailed;
+}
+function draftSnapshot() {
+  return {
+    roster_id: state.roster.id,
+    evaluator_id: state.evaluator.id,
+    submission_id: state.id,
+    members: state.peers.map(peer => ({ member_id: peer.id, ...state.ratings[peer.id] })),
+  };
+}
+function saveSnapshot(snapshot, key) {
+  const serialized = JSON.stringify(snapshot);
+  const task = draftQueue.then(async () => {
+    try {
+      await request('/api/drafts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: serialized });
+      try { if (localStorage.getItem(key) === serialized) localStorage.removeItem(key); } catch {}
+      if (state.evaluator?.id === snapshot.evaluator_id && JSON.stringify(draftSnapshot()) === serialized) {
+        state.dirty = false;
+        draftFailed = false;
+        draftMessage = 'Respostas salvas. Você pode sair e continuar depois escolhendo seu nome neste grupo.';
+        updateDraftStatus();
+      }
+      return true;
+    } catch (err) {
+      if (state.evaluator?.id === snapshot.evaluator_id) {
+        draftFailed = true;
+        draftMessage = 'Ainda não foi possível salvar no servidor. Mantenha esta página aberta e tente salvar novamente.';
+        updateDraftStatus();
+      }
+      return false;
+    }
+  });
+  draftQueue = task.catch(() => false);
+  return task;
+}
+function scheduleDraft(immediate = false) {
+  clearTimeout(draftTimer);
+  const snapshot = draftSnapshot(), key = draftKey(snapshot.roster_id, snapshot.evaluator_id);
+  try { localStorage.setItem(key, JSON.stringify(snapshot)); } catch {}
+  draftMessage = 'Salvando respostas…';
+  updateDraftStatus();
+  if (immediate) return saveSnapshot(snapshot, key);
+  draftTimer = setTimeout(() => saveSnapshot(snapshot, key), 350);
+}
+$('#draft-retry').addEventListener('click', () => scheduleDraft(true));
+window.addEventListener('online', () => { if (state.dirty && state.evaluator) scheduleDraft(true); });
+async function chooseEvaluator(id) {
   const evaluator = state.roster.members.find((member) => member.id === id);
   if (!evaluator) return;
-  state.evaluator = evaluator;
-  state.peers = state.roster.members.filter((member) => member.id !== id);
-  state.ratings = Object.fromEntries(state.peers.map((peer) => [peer.id, {}]));
-  state.peerIndex = 0;
-  state.id = crypto.randomUUID();
-  state.dirty = false;
-  show("rate");
+  busy(true, 'Carregando suas respostas…');
+  try {
+    await draftQueue;
+    const { draft } = await request('/api/drafts?' + new URLSearchParams({ roster_id: state.roster.id, evaluator_id: id }));
+    let local;
+    try { local = JSON.parse(localStorage.getItem(draftKey(state.roster.id, id))); } catch {}
+    const restored = local?.roster_id === state.roster.id && local?.evaluator_id === id ? local : draft;
+    state.evaluator = evaluator;
+    state.peers = state.roster.members.filter((member) => member.id !== id);
+    state.ratings = Object.fromEntries(state.peers.map((peer) => [peer.id, restored?.members?.find(member => member.member_id === peer.id) || {}]));
+    state.id = restored?.submission_id || crypto.randomUUID();
+    state.dirty = Boolean(local);
+    draftFailed = false;
+    draftMessage = restored ? 'Suas respostas anteriores foram recuperadas. Continue de onde parou.' : '';
+    state.peerIndex = state.peers.findIndex((peer, index) => !validatePeer(index, false));
+    if (state.peerIndex < 0) {
+      state.peerIndex = state.peers.length - 1;
+      show('review');
+    } else show('rate');
+    if (local) scheduleDraft(true);
+  } catch (err) { error(err.message); }
+  finally { busy(false); }
 }
 function validatePeer(index, focus = true) {
   const peer = state.peers[index];
@@ -270,16 +367,19 @@ function validatePeer(index, focus = true) {
   return true;
 }
 async function submitEvaluation() {
+  busy(true, "Enviando avaliação…");
+  clearTimeout(draftTimer);
+  await draftQueue;
   const incomplete = state.peers.findIndex(
     (peer, index) => !validatePeer(index, false),
   );
   if (incomplete >= 0) {
+    busy(false);
     state.peerIndex = incomplete;
     show("rate");
     validatePeer(incomplete);
     return;
   }
-  busy(true, "Enviando avaliação…");
   try {
     const payload = {
       ...context(),
@@ -297,6 +397,8 @@ async function submitEvaluation() {
       body: JSON.stringify(payload),
     });
     if (!data.saved) throw new Error("Não foi possível registrar a avaliação.");
+    try { localStorage.removeItem(draftKey(state.roster.id, state.evaluator.id)); } catch {}
+    state.roster.submitted_evaluator_ids = [...new Set([...(state.roster.submitted_evaluator_ids || []), state.evaluator.id])];
     state.dirty = false;
     show("done");
   } catch (err) {
@@ -332,6 +434,7 @@ function restart(message = "") {
   }
 }
 function goBack() {
+  if (state.view === 'rate' && state.dirty) scheduleDraft(true);
   switch (state.view) {
     case "grade":
       restart();
@@ -380,6 +483,7 @@ $("#screen").addEventListener("input", (event) => {
       event.target.dataset.note + "_obs"
     ] = event.target.value;
     state.dirty = true;
+    scheduleDraft();
   }
 });
 $("#screen").addEventListener("change", (event) => {
@@ -388,6 +492,7 @@ $("#screen").addEventListener("change", (event) => {
       event.target.dataset.rating
     ] = Number(event.target.value);
     state.dirty = true;
+    scheduleDraft();
   }
 });
 $("#screen").addEventListener("click", async (event) => {
@@ -395,6 +500,17 @@ $("#screen").addEventListener("click", async (event) => {
   if (!selected || state.busy) return;
   const { action, value } = selected.dataset;
   switch (action) {
+    case "check-open":
+      busy(true, "Verificando formulário…");
+      try {
+        await refreshConfig();
+        restart();
+      } catch (err) {
+        error(err.message);
+      } finally {
+        busy(false);
+      }
+      break;
     case "unit":
       state.unit = value;
       state.grade = "";
@@ -436,10 +552,14 @@ $("#screen").addEventListener("click", async (event) => {
       await saveRoster();
       break;
     case "evaluator":
-      chooseEvaluator(value);
+      await chooseEvaluator(value);
       break;
     case "next-peer":
       if (validatePeer(state.peerIndex)) {
+        busy(true, 'Salvando respostas…');
+        const saved = await scheduleDraft(true);
+        busy(false);
+        if (!saved) break;
         if (state.peerIndex + 1 < state.peers.length) {
           state.peerIndex++;
           show("rate");
@@ -448,6 +568,9 @@ $("#screen").addEventListener("click", async (event) => {
       break;
     case "submit":
       await submitEvaluation();
+      break;
+    case "next-evaluator":
+      await selectGroup(state.group_number);
       break;
     case "restart":
       restart();
@@ -461,3 +584,14 @@ window.addEventListener("beforeunload", (event) => {
   }
 });
 render();
+busy(true, "Carregando formulário…");
+refreshConfig()
+  .then(() => render())
+  .catch(() => {
+    error(
+      "Não foi possível consultar a abertura do formulário. Atualize a página para tentar novamente.",
+    );
+    state.is_open = false;
+    render();
+  })
+  .finally(() => busy(false));

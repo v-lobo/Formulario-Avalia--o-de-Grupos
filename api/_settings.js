@@ -1,7 +1,6 @@
 const { CONFIG, period } = require("./_groups");
 const SETTINGS = "stem_class_settings";
-async function loadSettings(client) {
-  const current = period();
+async function loadSettings(client, current = period()) {
   const read = () =>
     client
       .from(SETTINGS)
@@ -29,12 +28,10 @@ async function loadSettings(client) {
           });
       }
   if (missing.length) {
-    const result = await client
-      .from(SETTINGS)
-      .upsert(missing, {
-        onConflict: "academic_year,semester,unit,grade,class",
-        ignoreDuplicates: true,
-      });
+    const result = await client.from(SETTINGS).upsert(missing, {
+      onConflict: "academic_year,semester,unit,grade,class",
+      ignoreDuplicates: true,
+    });
     if (result.error) throw result.error;
     const resultRead = await read();
     if (resultRead.error) throw resultRead.error;

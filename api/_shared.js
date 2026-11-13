@@ -78,7 +78,13 @@ function validate(
   }
   return null;
 }
-function clean(body) {
+function clean(
+  body,
+  current = {
+    academic_year: Number(process.env.ACADEMIC_YEAR || 2026),
+    semester: 2,
+  },
+) {
   return {
     id: body.id,
     ...(body.roster_id
@@ -89,8 +95,8 @@ function clean(body) {
     grade: body.grade,
     class: body.class,
     group_number: body.group_number,
-    academic_year: Number(process.env.ACADEMIC_YEAR || 2026),
-    semester: 2,
+    academic_year: current.academic_year,
+    semester: current.semester,
     members: body.members.map((m) =>
       Object.fromEntries([
         ["member_name", m.member_name.trim()],

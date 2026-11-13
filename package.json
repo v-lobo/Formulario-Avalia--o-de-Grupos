@@ -5,12 +5,20 @@
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "preview:demo": "node tests/helpers/preview.js",
+    "assets": "node scripts/copy-export-assets.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.105.3"
+    "@supabase/supabase-js": "2.105.3",
+    "exceljs": "4.4.0",
+    "jspdf": "4.2.1",
+    "qrcode-generator": "2.0.4"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16"
   }
 }

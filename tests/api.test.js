@@ -6,11 +6,15 @@ const config = require("../public/js/school-config");
 let handler,
   groupsHandler,
   settingsHandler,
+  manageHandler,
   server,
   calls = [],
   saved = new Map(),
   rosters = new Map(),
   unavailable = false;
+const periods = [
+  { academic_year: 2026, semester: 2, is_current: true, is_open: true },
+];
 const baseRoster = {
   id: randomUUID(),
   unit: "Farol",
@@ -89,6 +93,19 @@ before(async () => {
     };
     if (unavailable)
       return reply(503, { code: "unavailable", message: "Database down" });
+    if (url.pathname.endsWith("/stem_form_periods")) {
+      const matches = periods.filter((p) =>
+        [...url.searchParams]
+          .filter(([k]) =>
+            ["is_current", "academic_year", "semester"].includes(k),
+          )
+          .every(([k, v]) => String(p[k]) === v.slice(3)),
+      );
+      return reply(
+        200,
+        req.headers.accept?.includes("vnd.pgrst.object") ? matches[0] : matches,
+      );
+    }
     if (url.pathname.endsWith("/stem_class_settings"))
       return reply(200, settings);
     if (url.pathname.endsWith("/rpc/stem_set_group_limit")) {
@@ -136,7 +153,9 @@ before(async () => {
       const matches = [...rosters.values()].filter((r) =>
         [...url.searchParams]
           .filter(([k]) => !["select", "limit"].includes(k))
-          .every(([k, v]) => String(r[k]) === v.slice(3)),
+          .every(([k, v]) =>
+            v === "is.null" ? r[k] == null : String(r[k]) === v.slice(3),
+          ),
       );
       return reply(200, matches);
     }
@@ -161,6 +180,7 @@ before(async () => {
   handler = require("../api/evaluations");
   groupsHandler = require("../api/groups");
   settingsHandler = require("../api/settings");
+  manageHandler = require("../api/manage");
 });
 after(() => server.close());
 test("salva todos os colegas em uma única gravação, com nomes canônicos do cadastro", async () => {
@@ -294,4 +314,61 @@ test("falha no banco nunca retorna sucesso", async () => {
   unavailable = true;
   assert.equal((await request(handler, payload())).code, 502);
   unavailable = false;
+});
+
+test("gestão exige senha para leitura, períodos e lixeira antes de acessar o banco", async () => {
+  calls = [];
+  for (const method of ["GET", "POST", "PATCH"]) {
+    assert.equal((await request(manageHandler, {}, method)).code, 401);
+    assert.equal((await request(manageHandler, {}, method, "wrong")).code, 401);
+  }
+  assert.deepEqual(calls, []);
+});
+test("gestão rejeita ações, IDs e motivos inválidos", async () => {
+  calls = [];
+  for (const body of [
+    { action: "destroy", academic_year: 2026, semester: 2 },
+    { action: "create", academic_year: 2027, semester: 1 },
+    { action: "open", academic_year: "2026", semester: 2 },
+  ])
+    assert.equal(
+      (await request(manageHandler, body, "POST", "local-test")).code,
+      400,
+    );
+  for (const body of [
+    { action: "trash", kind: "submission", id: "invalid" },
+    { action: "trash", kind: "other_table", id: randomUUID() },
+    {
+      action: "restore",
+      kind: "roster",
+      id: randomUUID(),
+      reason: "x".repeat(301),
+    },
+  ])
+    assert.equal(
+      (await request(manageHandler, body, "PATCH", "local-test")).code,
+      400,
+    );
+  assert.deepEqual(calls, []);
+});
+test("fechamento impede novos envios e cadastros públicos; período antigo é recusado", async () => {
+  periods[0].is_open = false;
+  try {
+    assert.equal((await request(handler, payload())).code, 409);
+    assert.equal(
+      (await request(groupsHandler, { ...baseRoster, names: ["A", "B"] })).code,
+      409,
+    );
+  } finally {
+    periods[0].is_open = true;
+  }
+  assert.equal(
+    (await request(handler, { ...payload(), academic_year: 2025, semester: 2 }))
+      .code,
+    409,
+  );
+});
+test("mais de um UUID por avaliador continua permitido", async () => {
+  assert.equal((await request(handler, payload())).code, 201);
+  assert.equal((await request(handler, payload())).code, 201);
 });

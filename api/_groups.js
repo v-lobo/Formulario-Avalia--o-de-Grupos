@@ -6,13 +6,14 @@ const period = () => ({
   academic_year: Number(process.env.ACADEMIC_YEAR || 2026),
   semester: 2,
 });
-function selection(body) {
+function selection(body, current = period()) {
   return {
     unit: body.unit,
     grade: body.grade,
     class: body.class,
     group_number: Number(body.group_number),
-    ...period(),
+    academic_year: current.academic_year,
+    semester: current.semester,
   };
 }
 function validateContext(body) {
@@ -58,26 +59,26 @@ function validateRoster(names) {
     return "Há nomes repetidos. Informe cada integrante uma única vez.";
   return null;
 }
-function rosterRow(body) {
+function rosterRow(body, current) {
   return {
     id: crypto.randomUUID(),
-    ...selection(body),
+    ...selection(body, current),
     members: body.names.map((name) => ({
       id: crypto.randomUUID(),
       name: name.trim().replace(/\s+/g, " "),
     })),
   };
 }
-async function findRoster(client, body) {
+async function findRoster(client, body, current) {
   let query = client.from(ROSTERS).select("*");
-  for (const [key, value] of Object.entries(selection(body)))
+  for (const [key, value] of Object.entries(selection(body, current)))
     query = query.eq(key, value);
-  return query.maybeSingle();
+  return query.is("deleted_at", null).maybeSingle();
 }
-function checkRosterEvaluation(body, roster) {
-  if (!roster || roster.id !== body.roster_id)
+function checkRosterEvaluation(body, roster, current) {
+  if (!roster || roster.deleted_at || roster.id !== body.roster_id)
     return "O grupo selecionado não foi cadastrado.";
-  const expectedContext = selection(body);
+  const expectedContext = selection(body, current);
   if (
     Object.entries(expectedContext).some(
       ([key, value]) => roster[key] !== value,

@@ -1,6 +1,7 @@
 const { getSupabase } = require("./_supabase");
 const { TABLE, fail } = require("./_shared");
 const { ROSTERS } = require("./_groups");
+const { currentPeriod } = require("./_periods");
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "GET")
@@ -12,10 +13,12 @@ module.exports = async function handler(req, res) {
       ),
     );
     for (const check of checks) if (check.error) throw check.error;
+    const current = await currentPeriod(getSupabase());
     return res.status(200).json({
       connected: true,
-      academic_year: Number(process.env.ACADEMIC_YEAR || 2026),
-      semester: 2,
+      academic_year: current.academic_year,
+      semester: current.semester,
+      is_open: current.is_open,
     });
   } catch (error) {
     return fail(res, error);

@@ -2,58 +2,76 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Avaliação de equipes · STEM | Colégio Contato</title>
     <meta
       name="description"
       content="Cadastro e avaliação dos integrantes das equipes de STEM do Colégio Contato."
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap"
+    />
+    <link rel="stylesheet" href="/css/ui.css" />
     <link rel="stylesheet" href="/css/form.css" />
     <script src="/js/school-config.js" defer></script>
     <script src="/js/app.js" defer></script>
   </head>
   <body>
-    <nav id="teacher-entry" aria-label="Acesso do professor">
-      <a
-        class="teacher-access"
-        href="/dashboard.html"
-        aria-label="Área do professor"
-        title="Área do professor"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+    <div class="brand-stripe" aria-hidden="true"></div>
+    <header class="student-header">
+      <img src="/logocolegiocontato.png" alt="Colégio Contato Maceió" />
+      <nav id="teacher-entry" aria-label="Acesso do professor">
+        <a
+          class="teacher-access"
+          href="/dashboard.html"
+          aria-label="Área do professor"
+          title="Área do professor"
         >
-          <rect x="5" y="10" width="14" height="11" rx="2" />
-          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-          <path d="M12 14v3" />
-        </svg>
-      </a>
-    </nav>
-    <main class="form-card">
-      <header class="form-header">
-        <img
-          src="/logocolegiocontato.png"
-          alt="Colégio Contato Maceió"
-          width="210"
-        />
-        <h1>Avaliação de equipes</h1>
-        <p>STEM · <span id="period">2º semestre · 2026</span></p>
-      </header>
-      <p id="selection-context" class="selection-context" hidden></p>
-      <p id="flow-notice" class="flow-notice" role="status" hidden></p>
-      <form id="flow-form" novalidate>
-        <section id="screen" class="flow-screen" aria-live="polite"></section>
-      </form>
-      <p id="busy-status" class="section-description" role="status" hidden></p>
-      <p id="form-error" class="error-message" role="alert" hidden></p>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="5" y="10" width="14" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+            <path d="M12 14v3" />
+          </svg>
+        </a>
+      </nav>
+    </header>
+    <main class="student-main">
+      <div class="form-card">
+        <header class="form-header"><img class="card-logo" src="/logocolegiocontato.png" alt="Colégio Contato Maceió" />
+          <h1>Avaliação de equipes</h1>
+          <p>STEM · <span id="period">2º semestre · 2026</span></p>
+        </header>
+        <p id="selection-context" class="selection-context" hidden></p>
+        <p id="flow-notice" class="flow-notice" role="status" hidden></p>
+        <form id="flow-form" novalidate>
+          <section id="screen" class="flow-screen" aria-live="polite"></section>
+        </form>
+        <p id="draft-status" class="flow-notice" role="status" hidden></p>
+        <button type="button" id="draft-retry" class="secondary" hidden>Tentar salvar novamente</button>
+        <p
+          id="busy-status"
+          class="section-description"
+          role="status"
+          hidden
+        ></p>
+        <p id="form-error" class="error-message" role="alert" hidden></p>
+      </div>
     </main>
   </body>
 </html>
