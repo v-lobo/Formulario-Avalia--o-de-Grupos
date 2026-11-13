@@ -1,5 +1,11 @@
 # Referência visual · Avaliação de equipes
 
+## PDFs · identidade institucional
+
+Revisão em 13/11/2026: vermelho institucional `#e8432c` na faixa, nos acentos e no rodapé; vermelho escuro `#a92f24` nos destaques de texto; fundos suaves `#fff2ef` e texto principal `#282735`. A logo oficial aparece no cabeçalho, com período e identificação do STEM alinhados à direita. O resumo, as continuações e as páginas individuais compartilham o mesmo cabeçalho e rodapé.
+
+Os tamanhos do gráfico e dos indicadores foram preservados a pedido do usuário: gráfico de 180 × 85 mm, média individual em 17 pt e média do recorte em 19 pt. As cinco cores da escala de satisfação são mantidas para consistência com o painel. A revisão altera somente a apresentação dos PDFs, sem mudar cálculos, ordenação ou conteúdo do Excel.
+
 Análise realizada em 10/11/2026, a partir das páginas públicas e do painel aberto no navegador:
 
 - [Avaliação dos Professores](https://avaliacao-professores.vercel.app/): início, identificação e estilos de avaliação.

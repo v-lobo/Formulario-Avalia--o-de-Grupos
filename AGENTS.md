@@ -8,3 +8,8 @@
 - Não publicar uma pasta com alterações sem commit. Caso seja necessário acionar o deployment manualmente, usar a referência Git exata já enviada, preservando a correspondência entre o código publicado e o commit.
 - Acompanhar o deployment até concluir, verificar que o domínio de produção aponta para o commit enviado e conferir a saúde da API e os recursos alterados.
 - O banco Supabase `contato-atividades` (`vbaedyhqmrmaovnerloo`) é compartilhado. Inspecionar o histórico e o esquema antes de aplicar somente migrações pendentes. Preservar respostas, cadastros e esquemas de outros aplicativos.
+
+# Identidade visual dos PDFs
+
+- O vermelho é a cor predominante do tema institucional do colégio (`#e8432c`, já definido em `public/css/ui.css`). Usar a logo oficial e vermelho nos destaques dos PDFs, com texto em cor escura para leitura.
+- Manter os tamanhos atuais do gráfico e dos indicadores dos PDFs; o usuário pediu expressamente para não ampliá-los. Alterações de tamanho dependem de um novo pedido do usuário.

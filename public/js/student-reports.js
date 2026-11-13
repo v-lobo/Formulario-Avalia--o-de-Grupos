@@ -5,6 +5,7 @@
   ];
   const levels = ['Muito Insatisfeito', 'Insatisfeito', 'Neutro', 'Satisfeito', 'Muito Satisfeito'];
   const colors = ['#c73a3a', '#f0a09c', '#d9d8d2', '#86b6ef', '#1c5cab'];
+  const PDF_THEME = { red: '#e8432c', redDark: '#a92f24', ink: '#282735', muted: '#626273', tint: '#fff2ef', line: '#eadedb' };
   const average = values => values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
   const format = value => value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const libraries = new Map();
@@ -40,29 +41,49 @@
     const ordered = groups.flatMap(group => group.students);
     return { classes: groups, students: ordered, mean: average(ordered.map(student => student.mean)) };
   }
-  function summaryPages(doc, selection, period) {
+  let logoPromise;
+  function pdfLogo() {
+    if (!logoPromise) logoPromise = fetch('/logocolegiocontato.png')
+      .then(response => { if (!response.ok) throw new Error('Logo indisponível'); return response.arrayBuffer(); })
+      .then(buffer => new Uint8Array(buffer)).catch(() => null);
+    return logoPromise;
+  }
+  function pdfHeader(doc, period, logo) {
+    doc.setFillColor(PDF_THEME.red); doc.rect(0, 0, 210, 4, 'F');
+    if (logo) doc.addImage(logo.bytes, 'PNG', 15, 10, 34, 34 * logo.ratio, 'contato-logo', 'FAST');
+    else {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(PDF_THEME.ink);
+      doc.text('COLÉGIO CONTATO', 15, 18);
+    }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(PDF_THEME.redDark);
+    doc.text('STEM · AVALIAÇÃO DE EQUIPES', 195, 15, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(PDF_THEME.muted);
+    doc.text(period, 195, 22, { align: 'right' });
+    doc.setDrawColor(PDF_THEME.line); doc.setLineWidth(0.25); doc.line(15, 27, 195, 27);
+  }
+  function summaryPages(doc, selection, period, logo) {
     function heading(continued) {
-      doc.setFillColor('#173c38'); doc.rect(0, 0, 210, 7, 'F');
-      doc.setTextColor('#173c38'); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-      doc.text('COLÉGIO CONTATO · STEM', 15, 18);
-      doc.setFontSize(19); doc.text(continued ? 'Resumo dos alunos · continuação' : 'Resumo dos alunos', 15, 29);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(period, 15, 39);
+      pdfHeader(doc, period, logo);
+      doc.setTextColor(PDF_THEME.ink); doc.setFont('helvetica', 'bold');
+      doc.setFontSize(19); doc.text(continued ? 'Resumo dos alunos · continuação' : 'Resumo dos alunos', 15, 37);
       if (continued) return 51;
-      doc.setFillColor('#eef5f3'); doc.roundedRect(15, 46, 180, 22, 3, 3, 'F');
-      doc.setFontSize(10); doc.text('Média do recorte', 20, 54);
+      doc.setFillColor(PDF_THEME.tint); doc.roundedRect(15, 46, 180, 22, 3, 3, 'F');
+      doc.setFillColor(PDF_THEME.red); doc.rect(15, 49, 1, 16, 'F');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(PDF_THEME.redDark); doc.text('Média do recorte', 20, 54);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(19); doc.text(`${format(selection.mean)} / 5`, 20, 64);
-      doc.setFontSize(10);
+      doc.setFontSize(10); doc.setTextColor(PDF_THEME.ink);
       doc.text(`${selection.students.length} ${selection.students.length === 1 ? 'aluno' : 'alunos'} · ${selection.classes.length} ${selection.classes.length === 1 ? 'turma' : 'turmas'}`, 190, 59, { align: 'right' });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor('#475569');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(PDF_THEME.muted);
       doc.text('Média das médias finais, com o mesmo peso para cada aluno.', 15, 77);
       return 90;
     }
     let y = heading(false);
     function classHeading(group, continued = false) {
-      doc.setFillColor('#eef5f3'); doc.rect(15, y - 5, 180, 9, 'F');
-      doc.setTextColor('#173c38'); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.setFillColor(PDF_THEME.tint); doc.rect(15, y - 5, 180, 9, 'F');
+      doc.setFillColor(PDF_THEME.red); doc.rect(15, y - 5, 1, 9, 'F');
+      doc.setTextColor(PDF_THEME.redDark); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
       doc.text(group.label + (continued ? ' · continuação' : ''), 18, y + 1);
-      doc.setFontSize(9); doc.setTextColor('#475569');
+      doc.setFontSize(9); doc.setTextColor(PDF_THEME.muted);
       doc.text('Aluno', 15, y + 12); doc.text('Grupo', 160, y + 12, { align: 'center' }); doc.text('Média final', 195, y + 12, { align: 'right' });
       y += 18;
     }
@@ -76,21 +97,22 @@
         const lines = doc.splitTextToSize(student.name, 126);
         const height = Math.max(6, lines.length * 4.2 + 1.8);
         if (y + height > 270) { doc.addPage(); y = heading(true); classHeading(group, true); }
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor('#173c38');
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(PDF_THEME.ink);
         doc.text(lines, 15, y); doc.text(String(student.groupNumber || '—'), 160, y, { align: 'center' });
-        doc.setFont('helvetica', 'bold'); doc.text(format(student.mean), 195, y, { align: 'right' });
-        doc.setDrawColor('#e2e8e6'); doc.line(15, y + height - 3, 195, y + height - 3);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(PDF_THEME.redDark); doc.text(format(student.mean), 195, y, { align: 'right' });
+        doc.setDrawColor(PDF_THEME.line); doc.line(15, y + height - 3, 195, y + height - 3);
         y += height;
       }
       y += 4;
     }
   }
-  function chart(student) {
+  function chart(student, theme) {
+    const ink = theme?.ink || '#173c38';
     const canvas = document.createElement('canvas');
     canvas.width = 1440; canvas.height = 680;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 1440, 680);
-    ctx.fillStyle = '#173c38'; ctx.font = 'bold 32px Arial';
+    ctx.fillStyle = theme?.redDark || ink; ctx.font = 'bold 32px Arial';
     ctx.fillText('Distribuição por categoria', 25, 50);
     levels.forEach((label, i) => {
       const x = 25 + (i % 3) * 460, y = 94 + Math.floor(i / 3) * 38;
@@ -102,7 +124,7 @@
     ctx.fillText('Média', 1170, 196); ctx.fillText('Notas 4–5', 1280, 196);
     student.categories.forEach((c, index) => {
       const y = 240 + index * 78;
-      ctx.fillStyle = '#173c38'; ctx.font = '22px Arial'; ctx.fillText(c.label, 25, y + 28);
+      ctx.fillStyle = ink; ctx.font = '22px Arial'; ctx.fillText(c.label, 25, y + 28);
       let x = 365;
       ctx.fillStyle = '#f1f5f9'; ctx.fillRect(x, y, 755, 44);
       c.counts.forEach((count, i) => {
@@ -115,7 +137,7 @@
         }
         x += width;
       });
-      ctx.fillStyle = '#173c38'; ctx.font = 'bold 23px Arial'; ctx.fillText(c.total ? format(c.mean) : '—', 1170, y + 29);
+      ctx.fillStyle = ink; ctx.font = 'bold 23px Arial'; ctx.fillText(c.total ? format(c.mean) : '—', 1170, y + 29);
       ctx.fillText(c.total ? `${Math.round(c.satisfied * 100)}%` : '—', 1280, y + 29);
     });
     ctx.font = '20px Arial'; ctx.fillStyle = '#64748b';
@@ -131,30 +153,40 @@
     if (!students.length) throw new Error('Não há alunos avaliados para exportar.');
     await library('jspdf', '/js/vendor/jspdf.umd.min.js');
     const doc = new root.jspdf.jsPDF({ compress: true });
+    const logoBytes = await pdfLogo();
+    let logo = null;
+    if (logoBytes) {
+      try { const info = doc.getImageProperties(logoBytes); logo = { bytes: logoBytes, ratio: info.height / info.width }; } catch {}
+    }
     const selection = summarizeSelection(students);
-    summaryPages(doc, selection, period);
+    summaryPages(doc, selection, period, logo);
     if (!summaryOnly) selection.students.forEach((s) => {
       doc.addPage();
-      doc.setFillColor('#173c38'); doc.rect(0, 0, 210, 7, 'F');
-      doc.setTextColor('#173c38'); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
-      doc.text('COLÉGIO CONTATO · STEM', 15, 22);
+      pdfHeader(doc, period, logo);
+      doc.setTextColor(PDF_THEME.ink); doc.setFont('helvetica', 'bold');
       doc.setFontSize(19); doc.text('Acompanhamento por aluno', 15, 35);
       doc.setFontSize(15);
       const name = doc.splitTextToSize(s.name, 180); doc.text(name, 15, 50);
       const y = 53 + name.length * 7;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-      doc.text(`${s.label} · ${period}`, 15, y);
+      doc.setTextColor(PDF_THEME.muted); doc.text(s.label, 15, y);
       doc.text(`${s.received} avaliações recebidas · Notas 1 ou 2: ${s.values.filter(v => v <= 2).length}`, 15, y + 9);
+      doc.setFillColor(PDF_THEME.tint); doc.roundedRect(15, y + 15, 180, 15, 2, 2, 'F');
+      doc.setFillColor(PDF_THEME.red); doc.rect(15, y + 17, 1, 11, 'F');
+      doc.setTextColor(PDF_THEME.redDark);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
-      doc.text(`Média final: ${format(s.mean)} / 5`, 15, y + 24);
-      doc.addImage(chart(s), 'PNG', 15, y + 34, 180, 85);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor('#475569');
+      doc.text(`Média final: ${format(s.mean)} / 5`, 20, y + 24);
+      doc.addImage(chart(s, PDF_THEME), 'PNG', 15, y + 34, 180, 85);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(PDF_THEME.muted);
       const note = 'A média final considera as notas recebidas nos cinco critérios. As barras mostram a proporção de cada nota por categoria; notas 4 e 5 indicam satisfação.';
       doc.text(doc.splitTextToSize(note, 180), 15, y + 133);
     });
     const created = new Date().toLocaleString('pt-BR');
     for (let page = 1; page <= doc.getNumberOfPages(); page++) {
-      doc.setPage(page); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor('#475569');
+      doc.setPage(page);
+      doc.setDrawColor(PDF_THEME.line); doc.setLineWidth(0.25); doc.line(15, 276, 195, 276);
+      doc.setDrawColor(PDF_THEME.red); doc.setLineWidth(0.6); doc.line(15, 276, 32, 276);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(PDF_THEME.muted);
       doc.text(`Gerado em ${created}`, 15, 282);
       doc.text(`Página ${page} de ${doc.getNumberOfPages()}`, 195, 282, { align: 'right' });
     }
